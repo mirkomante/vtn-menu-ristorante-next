@@ -5,6 +5,8 @@
  */
 
 import { Badge, Button, Container, Heading, Text } from "@/components/ui";
+import { DishCard, MenuSection } from "@/components/menu";
+import type { CategoriaMenu, Piatto } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Dati palette
@@ -76,6 +78,94 @@ const palette = [
     textDark: false,
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Dati dummy per test componenti di dominio
+// ---------------------------------------------------------------------------
+
+const DUMMY_CATEGORIA: CategoriaMenu = {
+  id: "cat-1",
+  nome: "Antipasti",
+  slug: "antipasti",
+  descrizione: "Piccoli assaggi per iniziare il pasto nel segno della freschezza.",
+  attiva: true,
+  createdAt: "",
+  updatedAt: "",
+};
+
+const DUMMY_PIATTI: Piatto[] = [
+  {
+    id: "piatto-1",
+    nome: "Phở Bò",
+    slug: "pho-bo",
+    tipo: "cibo",
+    descrizione:
+      "Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie (anice stellato, cannella, cardamomo).",
+    prezzo: 14,
+    categoria: "cat-1",
+    allergeni: [{ id: "a1", nome: "Glutine", createdAt: "", updatedAt: "" }],
+    tag: ["chef consiglia"],
+    attivo: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "piatto-2",
+    nome: "Gỏi Cuốn",
+    slug: "goi-cuon",
+    tipo: "cibo",
+    descrizione:
+      "Involtini freschi in carta di riso con gamberi, maiale, vermicelli e erbe. Serviti con salsa di arachidi.",
+    prezzo: 8,
+    prezzoAlternativo: 14,
+    etichettaPrezzoAlternativo: "2 pz",
+    categoria: "cat-1",
+    allergeni: [
+      { id: "a2", nome: "Arachidi", createdAt: "", updatedAt: "" },
+      { id: "a3", nome: "Crostacei", createdAt: "", updatedAt: "" },
+    ],
+    tag: ["vegano"],
+    attivo: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "piatto-3",
+    nome: "Chả Giò",
+    slug: "cha-gio",
+    tipo: "cibo",
+    descrizione:
+      "Involtini croccanti fritti ripieni di maiale, funghi e vermicelli. Serviti con salsa nước chấm.",
+    prezzo: 9,
+    categoria: "cat-1",
+    allergeni: [{ id: "a1", nome: "Glutine", createdAt: "", updatedAt: "" }],
+    tag: ["piccante"],
+    attivo: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    id: "piatto-4",
+    nome: "Bún Bò Huế",
+    slug: "bun-bo-hue",
+    tipo: "cibo",
+    descrizione:
+      "Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.",
+    prezzo: 15,
+    categoria: "cat-1",
+    attivo: true,
+    createdAt: "",
+    updatedAt: "",
+  },
+];
+
+const DUMMY_AVAILABILITY = {
+  aggiornatoAl: new Date().toISOString(),
+  piatti: {
+    "piatto-3": { id: "piatto-3", stato: "esaurito" as const },
+  },
+  vini: {},
+};
 
 // ---------------------------------------------------------------------------
 // Componenti di sezione
@@ -482,6 +572,41 @@ export default function DesignSystemPage() {
 
           </div>
 
+        </div>
+
+        {/* ------------------------------------------------------------------ */}
+        {/* SEZIONE COMPONENTI DI DOMINIO                                      */}
+        {/* ------------------------------------------------------------------ */}
+        <SectionDivider title="Componenti di Dominio (Dati Reali)" />
+
+        <Text variant="body" muted className="mb-8">
+          Test con dati dummy che simulano la struttura reale di PayloadCMS.
+          Verifica DishCard (disponibile / esaurito) e MenuSection.
+        </Text>
+
+        {/* DishCard — singole */}
+        <Heading level={3} className="mb-4">
+          DishCard — varianti
+        </Heading>
+
+        <div className="mb-10">
+          <DishCard piatto={DUMMY_PIATTI[0]} isAvailable={true} />
+          <DishCard piatto={DUMMY_PIATTI[1]} isAvailable={true} />
+          <DishCard piatto={DUMMY_PIATTI[2]} isAvailable={false} />
+          <DishCard piatto={DUMMY_PIATTI[3]} isAvailable={true} />
+        </div>
+
+        {/* MenuSection completa */}
+        <Heading level={3} className="mb-4">
+          MenuSection — sezione completa
+        </Heading>
+
+        <div className="rounded-md border border-text-main/10 bg-background p-6">
+          <MenuSection
+            categoria={DUMMY_CATEGORIA}
+            piatti={DUMMY_PIATTI}
+            availability={DUMMY_AVAILABILITY}
+          />
         </div>
 
         {/* Footer pagina */}

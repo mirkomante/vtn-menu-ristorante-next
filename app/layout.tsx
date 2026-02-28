@@ -16,6 +16,7 @@ export default function RootLayout({
     <html lang="it">
       <body
         className={`${philosopher.variable} ${dmSans.variable} bg-background text-text-main antialiased`}
+        suppressHydrationWarning
       >
         {children}
       </body>

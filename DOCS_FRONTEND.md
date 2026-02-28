@@ -64,33 +64,42 @@ anche lato client (per `getRealTimeAvailability()`).
 
 ```
 src/
-app/
-│   └── fonts.ts            # Configurazione font Google (Philosopher + DM Sans)
-│
 ├── types/
-│   ├── payload-types.ts    # Interfacce che rispecchiano le collection/global di Payload
-│   ├── disponibilita.ts    # Interfaccia per il JSON di disponibilità GCS
-│   └── index.ts            # Re-export centralizzato
+│   ├── payload-types.ts        # Interfacce che rispecchiano le collection/global di Payload
+│   ├── disponibilita.ts        # Interfaccia per il JSON di disponibilità GCS
+│   └── index.ts                # Re-export centralizzato
 │
 ├── lib/
-│   └── api.ts              # Funzioni di fetching (build-time e client-side)
+│   └── api.ts                  # Funzioni di fetching (build-time e client-side)
 │
 ├── hooks/
-│   ├── useTimekeeper.ts    # Logica temporale: apertura, slot, festività
-│   └── useMenuStructure.ts # Logica strutturale: sezioni risolte per slot corrente
+│   ├── useTimekeeper.ts        # Logica temporale: apertura, slot, festività
+│   └── useMenuStructure.ts     # Logica strutturale: sezioni risolte per slot corrente
 │
 ├── context/
-│   └── MenuContext.tsx     # Provider globale: incapsula hooks + disponibilità
+│   └── MenuContext.tsx         # Provider globale: incapsula hooks + disponibilità
 │
 ├── components/
-│   └── ui/
-│       ├── Button.tsx      # Bottone con varianti primary/outline/ghost
-│       ├── Typography.tsx  # Heading (Philosopher) e Text (DM Sans)
-│       ├── Badge.tsx       # Etichette/tag con varianti
-│       ├── Container.tsx   # Wrapper centrato max-w-4xl
-│       └── index.ts        # Barrel export
+│   ├── ui/
+│   │   ├── Button.tsx          # Bottone con varianti primary/outline/ghost
+│   │   ├── Typography.tsx      # Heading (Philosopher) e Text (DM Sans)
+│   │   ├── Badge.tsx           # Etichette/tag con varianti
+│   │   ├── Container.tsx       # Wrapper centrato max-w-4xl
+│   │   └── index.ts            # Barrel export
+│   │
+│   └── menu/
+│       ├── DishCard.tsx        # Card singolo piatto (stile Minimal)
+│       ├── MenuSection.tsx     # Sezione categoria con lista DishCard
+│       ├── StickyNav.tsx       # Navigazione sticky con IntersectionObserver
+│       ├── MenuOrchestrator.tsx # Client Component radice del menu
+│       ├── MenuHeader.tsx      # Header bordeaux con stato apertura
+│       ├── MenuFooter.tsx      # Footer bordeaux con testo CMS
+│       └── index.ts            # Barrel export
 │
 app/
+├── fonts.ts                    # Configurazione font Google (Philosopher + DM Sans)
+├── design-system/
+│   └── page.tsx                # Pagina di preview Design System (solo sviluppo)
 ├── layout.tsx              # Root layout (font, metadata, classi base body)
 ├── page.tsx                # Homepage del menu
 └── globals.css             # Tema Tailwind v4 (@theme) + reset CSS
@@ -254,6 +263,175 @@ Il pattern scelto per la lista piatti è **Minimal**: nessun sfondo, separatore 
 ```
 
 > **Perché Minimal e non Card?** Il bianco su crema crea un contrasto di sfondo che appesantisce visivamente la pagina. Il Minimal mantiene il ritmo visivo fluido e valorizza la tipografia Philosopher.
+
+---
+
+## 4. Componenti di Dominio (`src/components/menu/`)
+
+I componenti di dominio traducono i dati grezzi di PayloadCMS in UI renderizzabile, applicando lo stile Minimal definito nel Design System. Tutti importabili da `@/components/menu`.
+
+---
+
+### `DishCard` — Il Singolo Piatto
+
+**File:** `src/components/menu/DishCard.tsx`
+**Dipendenze:** `Piatto` (da `@/types`), `<Heading>`, `<Text>`, `<Badge>` (da `@/components/ui`)
+
+Renderizza un piatto secondo lo stile Minimal: nessun sfondo card, separatore inferiore arancio `border-b-2 border-accent-orange/30`.
+
+**Props:**
+
+| Prop | Tipo | Default | Descrizione |
+|------|------|---------|-------------|
+| `piatto` | `Piatto` | — | Oggetto piatto da PayloadCMS |
+| `isAvailable` | `boolean` | `true` | Se `false`: `opacity-50` + badge "Esaurito" |
+| `className` | `string` | `""` | Classe CSS aggiuntiva |
+
+**Funzionalità:**
+- **Prezzo alternativo:** se `piatto.prezzoAlternativo` è presente, viene mostrato sotto il prezzo principale con la sua etichetta (es. "2 pz €14,00").
+- **Tag:** array `piatto.tag[]` → badge. Il tag `"chef consiglia"` usa `variant="highlight"` (arancio), gli altri `variant="default"` (blu notte).
+- **Allergeni:** lista `piatto.allergeni[]` come testo `caption muted` discreto, separati da virgola. Gestisce sia oggetti `Allergene` popolati che stringhe ID.
+- **Stato esaurito:** `opacity-50` sull'intera card + badge "Esaurito" con sfondo `surface-dark`.
+
+```tsx
+import { DishCard } from "@/components/menu";
+
+<DishCard piatto={piatto} isAvailable={true} />
+<DishCard piatto={piatto} isAvailable={false} /> // opacità + badge Esaurito
+```
+
+---
+
+### `MenuSection` — La Sezione Categoria
+
+**File:** `src/components/menu/MenuSection.tsx`
+**Dipendenze:** `CategoriaMenu`, `Piatto`, `DisponibilitaResponse` (da `@/types`), `DishCard`, `<Container>`, `<Heading>`, `<Text>`
+
+Raggruppa i piatti di una categoria con titolo decorato e lista `DishCard`.
+
+**Props:**
+
+| Prop | Tipo | Default | Descrizione |
+|------|------|---------|-------------|
+| `categoria` | `CategoriaMenu` | — | Categoria con `slug` usato come `id` HTML per le ancore |
+| `piatti` | `Piatto[]` | — | Lista piatti da renderizzare |
+| `availability` | `DisponibilitaResponse \| null` | `null` | Mappa disponibilità da GCS |
+| `className` | `string` | `""` | Classe CSS aggiuntiva |
+
+**Funzionalità:**
+- Se `piatti.length === 0` → restituisce `null` (non renderizza nulla).
+- Genera `<section id={categoria.slug}>` per il deep-link dalla `StickyNav`.
+- `scroll-mt-16` compensa l'altezza della navbar sticky.
+- Titolo `h2` in bordeaux con linea decorativa arancio tramite pseudo-elemento `after:`.
+- Integra `availability`: piatti con stato `"nascosto"` vengono saltati; `"esaurito"` → `isAvailable={false}` a `DishCard`.
+
+```tsx
+import { MenuSection } from "@/components/menu";
+
+<MenuSection
+  categoria={categoria}
+  piatti={piatti}
+  availability={availability} // null = tutto disponibile
+/>
+```
+
+---
+
+### `StickyNav` — La Navigazione Fissa
+
+**File:** `src/components/menu/StickyNav.tsx`
+**Dipendenze:** `CategoriaMenu` (da `@/types`), React `useEffect`, `useState`, `useRef`
+
+Barra di navigazione sticky con sfondo bordeaux che evidenzia la sezione corrente durante lo scroll.
+
+**Props:**
+
+| Prop | Tipo | Default | Descrizione |
+|------|------|---------|-------------|
+| `categorie` | `CategoriaMenu[]` | — | Lista categorie da mostrare come link |
+| `activeSlug` | `string \| null` | — | Override esterno della sezione attiva |
+| `onCategoryChange` | `(slug: string) => void` | — | Callback al cambio sezione |
+
+**Funzionalità:**
+- `IntersectionObserver` con `rootMargin: "-64px 0px -40% 0px"` per rilevare la sezione visibile durante lo scroll, compensando l'altezza della navbar.
+- Click → `window.scrollTo({ behavior: 'smooth' })` con offset per la navbar.
+- Scroll orizzontale su mobile (`overflow-x-auto`, `scrollbar-none`).
+- Sezione attiva: `text-accent-gold` + sottolineatura oro.
+- Il link attivo viene portato in vista nella navbar stessa (`scrollIntoView inline: 'center'`).
+
+```tsx
+import { StickyNav } from "@/components/menu";
+
+<StickyNav
+  categorie={categorieAttive}
+  activeSlug={activeCategory}
+  onCategoryChange={setActiveCategory}
+/>
+```
+
+---
+
+### `MenuHeader` e `MenuFooter`
+
+**File:** `src/components/menu/MenuHeader.tsx`, `src/components/menu/MenuFooter.tsx`
+
+Entrambi leggono da `MenuConfig` (testo CMS) e `MenuStatus` (stato apertura).
+
+- **Header:** sfondo `surface-dark`, nome ristorante in Philosopher, messaggio di benvenuto, indicatore slot attivo (pallino oro + "Servizio Pranzo/Cena in corso"). Se chiuso: banner discreto con messaggio di chiusura.
+- **Footer:** sfondo `surface-dark`, nome ristorante, `testoFooter` dal CMS, copyright automatico con anno corrente.
+
+---
+
+### `MenuOrchestrator` — Il Client Component Radice
+
+**File:** `src/components/menu/MenuOrchestrator.tsx`
+
+Riceve `StaticMenuData` dal Server Component (`app/page.tsx`) e:
+1. Inizializza `<MenuProvider>` con i dati statici.
+2. Renderizza `MenuContent` (componente interno) che consuma il context e orchestra Header → StickyNav → Sezioni → Footer.
+3. Costruisce la mappa `slug → CategoriaMenu` per lookup O(1) nelle sezioni.
+
+```tsx
+// app/page.tsx (Server Component)
+import { MenuOrchestrator } from "@/components/menu";
+const staticData = await getStaticMenuData();
+return <MenuOrchestrator staticData={staticData} />;
+```
+
+---
+
+## 5. Integrazione Pagina Home (`app/page.tsx`)
+
+**Flusso dati end-to-end:**
+
+```
+pnpm build (build-time)
+  └─ app/page.tsx — Server Component async
+       └─ getStaticMenuData() → PayloadCMS REST API
+            → StaticMenuData { piatti, vini, categorie, allergeni, menuConfig, generali }
+       └─ <MenuOrchestrator staticData={...} />
+
+Browser (idratazione client)
+  └─ MenuOrchestrator → MenuProvider
+       ├─ useTimekeeper(generali)      → isOpen, activeSlot  [tick 30s]
+       ├─ useMenuStructure(...)        → sections filtrate per slot
+       └─ getRealTimeAvailability()    → availability         [polling 5min]
+  └─ MenuContent
+       ├─ MenuHeader   → nome + banner chiusura
+       ├─ StickyNav    → navigazione sticky
+       ├─ MenuSection × N → DishCard × M
+       └─ MenuFooter
+```
+
+**Gestione errori e casi limite:**
+
+| Scenario | Comportamento |
+|---|---|
+| Errore fetch a build-time | Pagina fallback con messaggio elegante (no crash della build) |
+| Ristorante chiuso | Banner discreto nell'header, menu consultabile |
+| Nessuna sezione per lo slot | Messaggio `EmptyMenu` centrato |
+| `availability` null (GCS irraggiungibile) | Tutto mostrato come disponibile (graceful degradation) |
+| Piatto con stato `"nascosto"` | Non renderizzato (rimosso silenziosamente dalla lista) |
 
 ---
 
@@ -423,6 +601,27 @@ Il sistema usa tre livelli di decisione, eseguiti in sequenza ogni 30 secondi:
 **Graceful degradation:**
 - Se `getRealTimeAvailability()` fallisce → `availability === null` → il componente mostra tutto come disponibile.
 - Se `useTimekeeper` non trova l'orario per oggi → `isOpen: false` (fail-safe: meglio mostrare chiuso che dati errati).
+
+### Componenti di Dominio — Relazione con i dati
+
+I componenti in `src/components/menu/` sono il punto di giunzione tra i dati di PayloadCMS e il Design System. Questa mappa spiega da dove viene ogni dato visualizzato:
+
+| Elemento visivo | Componente | Dato sorgente | Tipo TypeScript |
+|---|---|---|---|
+| Nome piatto | `DishCard` → `<Heading level={3}>` | `piatto.nome` | `Piatto.nome` |
+| Prezzo | `DishCard` → `<Text className="text-accent-gold">` | `piatto.prezzo` | `Piatto.prezzo` |
+| Descrizione | `DishCard` → `<Text muted>` | `piatto.descrizione` | `Piatto.descrizione?` |
+| Allergeni | `DishCard` → testo `caption` | `piatto.allergeni[]` | `(Allergene \| string)[]` |
+| Tag/Badge | `DishCard` → `<Badge>` | `piatto.tag[]` | `string[]` |
+| Stato esaurito | `DishCard` → `opacity-50` + badge | `availability.piatti[id].stato` | `StatoDisponibilita` |
+| Titolo sezione | `MenuSection` → `<Heading level={2} color="bordeaux">` | `categoria.nome` | `CategoriaMenu.nome` |
+| Descrizione sezione | `MenuSection` → `<Text muted>` | `categoria.descrizione` | `CategoriaMenu.descrizione?` |
+| Link navigazione | `StickyNav` → `<a href="#slug">` | `categoria.slug` | `CategoriaMenu.slug` |
+| Nome ristorante | `MenuHeader` | `menuConfig.nomeRistorante` | `MenuConfig.nomeRistorante` |
+| Messaggio chiusura | `MenuHeader` | `generali.messaggioChiusura` | `Generali.messaggioChiusura?` |
+| Testo footer | `MenuFooter` | `menuConfig.testoFooter` | `MenuConfig.testoFooter?` |
+
+**Regola per agenti:** quando crei un nuovo componente che mostra dati di un piatto, **importa sempre `DishCard`** invece di ricreare la struttura visiva. Se hai bisogno di varianti (es. card vino), crea `WineCard` seguendo lo stesso pattern di `DishCard` (stile Minimal, stesso separatore arancio).
 
 ### Come aggiungere una nuova collection
 
