@@ -26,9 +26,13 @@ import { useMenuStructure } from "@/hooks/useMenuStructure";
 import { useTimekeeper } from "@/hooks/useTimekeeper";
 import type {
   ActiveSlot,
+  Bevanda,
+  Birra,
   DisponibilitaResponse,
   Generali,
+  Liquore,
   MenuConfig,
+  MenuFisso,
   Piatto,
   SezioneRisolta,
   Vino,
@@ -88,6 +92,10 @@ export interface MenuProviderProps {
   generali: Generali;
   piatti: Piatto[];
   vini: Vino[];
+  menuFissi: MenuFisso[];
+  bevande: Bevanda[];
+  birre: Birra[];
+  liquori: Liquore[];
 }
 
 export function MenuProvider({
@@ -96,13 +104,17 @@ export function MenuProvider({
   generali,
   piatti,
   vini,
+  menuFissi,
+  bevande,
+  birre,
+  liquori,
 }: MenuProviderProps) {
   // --- Stato temporale ---
   const { isOpen, activeSlot, isHoliday, closureMessage } =
     useTimekeeper(generali);
 
   // --- Sezioni risolte ---
-  const sections = useMenuStructure({ menuConfig, activeSlot, piatti, vini });
+  const sections = useMenuStructure({ menuConfig, activeSlot, piatti, vini, menuFissi, bevande, birre, liquori });
 
   // --- Navigazione logica ---
   const [activeCategory, setActiveCategoryState] = useState<string | null>(

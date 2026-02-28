@@ -9,7 +9,7 @@
 
 import { Badge, Button, Container, Heading, Text } from "@/components/ui";
 import { DishCard, MenuSection } from "@/components/menu";
-import type { CategoriaMenu, Piatto } from "@/types";
+import type { CategoriaMenu, MenuItem, Piatto } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Dati palette
@@ -96,7 +96,7 @@ const DUMMY_CATEGORIA: CategoriaMenu = {
   updatedAt: "",
 };
 
-const DUMMY_PIATTI: Piatto[] = [
+const DUMMY_PIATTI_RAW: Piatto[] = [
   {
     id: 1,
     nome: "Phở Bò",
@@ -174,6 +174,8 @@ const DUMMY_PIATTI: Piatto[] = [
     updatedAt: "",
   },
 ];
+
+const DUMMY_PIATTI: MenuItem[] = DUMMY_PIATTI_RAW.map((p) => ({ ...p, _type: "piatto" as const }));
 
 const DUMMY_AVAILABILITY = {
   aggiornatoAl: new Date().toISOString(),
@@ -580,9 +582,9 @@ export default function DesignSystemPage() {
         </Heading>
 
         <div className="mb-10">
-          <DishCard piatto={DUMMY_PIATTI[0]} />
-          <DishCard piatto={DUMMY_PIATTI[1]} />
-          <DishCard piatto={DUMMY_PIATTI[3]} />
+          <DishCard item={DUMMY_PIATTI[0]} />
+          <DishCard item={DUMMY_PIATTI[1]} />
+          <DishCard item={DUMMY_PIATTI[3]} />
         </div>
 
         {/* MenuSection — layout aperto, nessun bordo esterno */}
@@ -592,7 +594,7 @@ export default function DesignSystemPage() {
 
         <MenuSection
           categoria={DUMMY_CATEGORIA}
-          piatti={DUMMY_PIATTI}
+          items={DUMMY_PIATTI}
           availability={DUMMY_AVAILABILITY}
         />
 

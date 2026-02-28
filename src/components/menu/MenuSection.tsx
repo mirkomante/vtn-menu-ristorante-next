@@ -1,17 +1,18 @@
 /**
  * MenuSection — Componente di dominio per una sezione del menu.
  *
- * Raggruppa i piatti di una categoria con titolo e lista DishCard.
+ * Raggruppa voci di menu (piatti, vini, bevande, ecc.) con titolo e lista DishCard.
  * Nessun bordo o sfondo esterno: layout completamente aperto sul crema.
  *
- * Logica disponibilità:
+ * Logica disponibilità (solo per piatti):
  * - Piatti "esaurito" → rimossi dalla lista (invisibili).
  * - Piatti "nascosto"  → rimossi dalla lista (invisibili).
- * - Se dopo il filtro non rimane nessun piatto → restituisce null.
+ * - Vini/bevande/liquori: sempre visibili (nessuna logica di disponibilità).
+ * - Se dopo il filtro non rimane nessuna voce → restituisce null.
  */
 
 import { Container, Heading, Text } from "@/components/ui";
-import type { CategoriaMenu, Piatto } from "@/types";
+import type { CategoriaMenu, MenuItem } from "@/types";
 import type { DisponibilitaResponse } from "@/types/disponibilita";
 import { DishCard } from "./DishCard";
 
@@ -20,8 +21,8 @@ import { DishCard } from "./DishCard";
 // ---------------------------------------------------------------------------
 
 export interface MenuSectionProps {
-  categoria: CategoriaMenu;
-  piatti: Piatto[];
+  categoria: Pick<CategoriaMenu, "slug" | "nome" | "descrizione">;
+  items: MenuItem[];
   /** Mappa disponibilità real-time da GCS. Se null, tutto è considerato disponibile. */
   availability?: DisponibilitaResponse | null;
   className?: string;
@@ -33,22 +34,21 @@ export interface MenuSectionProps {
 
 export function MenuSection({
   categoria,
-  piatti,
+  items,
   availability = null,
   className = "",
 }: MenuSectionProps) {
-  // Filtra i piatti: esaurito e nascosto → invisibili
-  // La chiave nella mappa può essere id numerico o stringa
-  const piattiVisibili = piatti.filter((piatto) => {
-    const item =
-      availability?.piatti[piatto.id] ??
-      availability?.piatti[String(piatto.id)];
-    if (!item) return true; // nessuna info → disponibile
-    return item.stato === "disponibile";
+  // Filtra le voci: per i piatti applica la logica disponibilità; gli altri sempre visibili
+  const itemsVisibili = items.filter((item) => {
+    if (item._type !== "piatto") return true;
+    const entry =
+      availability?.piatti[item.id] ??
+      availability?.piatti[String(item.id)];
+    if (!entry) return true;
+    return entry.stato === "disponibile";
   });
 
-  // Sezione senza piatti visibili → non renderizzare
-  if (piattiVisibili.length === 0) return null;
+  if (itemsVisibili.length === 0) return null;
 
   return (
     <section
@@ -74,10 +74,10 @@ export function MenuSection({
           )}
         </div>
 
-        {/* Lista piatti visibili */}
+        {/* Lista voci visibili */}
         <div className="flex flex-col">
-          {piattiVisibili.map((piatto) => (
-            <DishCard key={piatto.id} piatto={piatto} />
+          {itemsVisibili.map((item) => (
+            <DishCard key={`${item._type}-${item.id}`} item={item} />
           ))}
         </div>
       </Container>

@@ -20,6 +20,29 @@ import { MenuFooter } from "./MenuFooter";
 import type { StaticMenuData } from "@/types";
 
 // ---------------------------------------------------------------------------
+// Icona chevron inline — evita dipendenza da librerie icone esterne
+// ---------------------------------------------------------------------------
+
+function ChevronRight() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tipi
 // ---------------------------------------------------------------------------
 
@@ -34,40 +57,30 @@ export interface HomeIndexProps {
 interface SectionCardProps {
   slug: string;
   titolo: string;
-  numeroPiatti: number;
 }
 
-function SectionCard({ slug, titolo, numeroPiatti }: SectionCardProps) {
+function SectionCard({ slug, titolo }: SectionCardProps) {
   return (
     <Link
       href={`/menu/${slug}`}
       className={[
-        "group block border-b border-surface-dark/20 py-5",
+        "group block border-b border-surface-dark/15 py-5",
         "transition-colors duration-150",
-        "hover:border-accent-orange/60",
+        "hover:border-surface-dark/40",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold focus-visible:ring-offset-2",
       ].join(" ")}
     >
       <div className="flex items-center justify-between gap-4">
         <Heading
           level={2}
-          className="transition-colors duration-150 group-hover:text-accent-orange"
+          className="transition-colors duration-150 group-hover:text-surface-dark"
         >
           {titolo}
         </Heading>
 
-        {/* Freccia + conteggio piatti */}
-        <div className="flex shrink-0 items-center gap-3">
-          <Text variant="small" muted className="tabular-nums">
-            {numeroPiatti} {numeroPiatti === 1 ? "piatto" : "piatti"}
-          </Text>
-          <span
-            className="text-text-muted transition-transform duration-150 group-hover:translate-x-1 group-hover:text-accent-orange"
-            aria-hidden="true"
-          >
-            →
-          </span>
-        </div>
+        <span className="shrink-0 text-surface-dark/40 transition-all duration-150 group-hover:translate-x-0.5 group-hover:text-surface-dark/70">
+          <ChevronRight />
+        </span>
       </div>
     </Link>
   );
@@ -78,11 +91,11 @@ function SectionCard({ slug, titolo, numeroPiatti }: SectionCardProps) {
 // ---------------------------------------------------------------------------
 
 function IndexContent() {
-  const { sections, status, menuConfig, generali } = useMenu();
+  const { sections, status, menuConfig } = useMenu();
 
   return (
     <>
-      <MenuHeader menuConfig={menuConfig} generali={generali} status={status} />
+      <MenuHeader menuConfig={menuConfig} />
 
       <main className="min-h-screen bg-background">
         <Container as="div" className="py-10">
@@ -96,7 +109,6 @@ function IndexContent() {
                     key={sezione.slug}
                     slug={sezione.slug}
                     titolo={sezione.titolo}
-                    numeroPiatti={sezione.piatti.length}
                   />
                 ))}
               </div>
@@ -134,7 +146,7 @@ function EmptyIndex({ isOpen }: { isOpen: boolean }) {
 // ---------------------------------------------------------------------------
 
 export function HomeIndex({ staticData }: HomeIndexProps) {
-  const { menuConfig, generali, piatti, vini } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori } = staticData;
 
   return (
     <MenuProvider
@@ -142,6 +154,10 @@ export function HomeIndex({ staticData }: HomeIndexProps) {
       generali={generali}
       piatti={piatti}
       vini={vini}
+      menuFissi={menuFissi}
+      bevande={bevande}
+      birre={birre}
+      liquori={liquori}
     >
       <IndexContent />
     </MenuProvider>

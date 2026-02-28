@@ -20,7 +20,7 @@
  */
 
 import { useMemo } from "react";
-import type { ActiveSlot, MenuConfig, Piatto, SezioneRisolta, Vino } from "@/types";
+import type { ActiveSlot, Bevanda, Birra, Liquore, MenuConfig, MenuFisso, Piatto, SezioneRisolta, Vino } from "@/types";
 import { resolveMenuSection } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +50,10 @@ export interface MenuStructureInput {
   activeSlot: ActiveSlot;
   piatti: Piatto[];
   vini: Vino[];
+  menuFissi: MenuFisso[];
+  bevande: Bevanda[];
+  birre: Birra[];
+  liquori: Liquore[];
 }
 
 /**
@@ -64,24 +68,25 @@ export function computeMenuStructure({
   activeSlot,
   piatti,
   vini,
+  menuFissi,
+  bevande,
+  birre,
+  liquori,
 }: MenuStructureInput): SezioneRisolta[] {
-  // Usa standardItems (struttura reale del backend)
   const sezioni = menuConfig.standardItems ?? [];
-
   const risultati: SezioneRisolta[] = [];
 
   for (const sezione of sezioni) {
-    // Filtra per slot attivo
     if (!isSectionVisible(sezione.visibility, activeSlot)) continue;
 
-    // Query Builder: filterMode + targetCategories
-    const { piatti: piattiSezione, vini: viniSezione } = resolveMenuSection(sezione, piatti, vini);
+    const { items, menuFissi: menuFissiSezione } =
+      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori);
 
     risultati.push({
       slug: sezione.slug,
       titolo: sezione.label,
-      piatti: piattiSezione,
-      vini: viniSezione,
+      items,
+      menuFissi: menuFissiSezione,
       isSpecialPeriod: false,
     });
   }
@@ -110,6 +115,6 @@ export function useMenuStructure(input: MenuStructureInput): SezioneRisolta[] {
   return useMemo(
     () => computeMenuStructure(input),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [input.activeSlot, input.menuConfig, input.piatti, input.vini]
+    [input.activeSlot, input.menuConfig, input.piatti, input.vini, input.menuFissi, input.bevande, input.birre, input.liquori]
   );
 }

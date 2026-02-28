@@ -154,6 +154,156 @@ export interface Vino {
 }
 
 // ---------------------------------------------------------------------------
+// Collection: Bevande, Birre, Liquori
+// ---------------------------------------------------------------------------
+
+/**
+ * Tipologia generica per bevande, birre e liquori (embedded).
+ * Struttura identica nel backend per tutte e tre le collection.
+ */
+export interface TipologiaBevanda {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Bevanda (collection "bevande").
+ * Struttura reale del backend (verificata via API):
+ * - `tipologia`: oggetto embedded (depth>=1)
+ * - `nazione`: id numerico (non popolato a depth=1)
+ */
+export interface Bevanda {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  prezzo: number;
+  tipologia: TipologiaBevanda | number;
+  nazione?: number | null;
+  inLista: boolean;
+  ordine?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Birra (collection "birre").
+ * Struttura reale del backend (verificata via API).
+ */
+export interface Birra {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  prezzo: number;
+  tipologia: TipologiaBevanda | number;
+  grado?: string;
+  capacita?: string;
+  nazione?: number | null;
+  inLista: boolean;
+  ordine?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Liquore / Distillato (collection "liquori").
+ * Struttura reale del backend (verificata via API).
+ */
+export interface Liquore {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  prezzo: number;
+  tipologia: TipologiaBevanda | number;
+  grado?: string;
+  capacita?: string;
+  invecchiamento?: string;
+  nazione?: number | null;
+  inLista: boolean;
+  ordine?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Tipo unione: MenuItem
+// ---------------------------------------------------------------------------
+
+/**
+ * Tipo unione che rappresenta qualsiasi voce del menu visualizzabile con MenuSection.
+ *
+ * Tutti i tipi condividono: id, nome, prezzo, descrizione, inLista.
+ * Il campo `_type` discrimina il tipo a runtime per logiche specifiche (es. badge dietetici).
+ *
+ * Piatto e Vino non hanno `_type` nel backend — viene aggiunto a build-time
+ * da `toMenuItem()` in api.ts.
+ */
+export type MenuItem =
+  | (Piatto & { _type: "piatto" })
+  | (Vino & { _type: "vino" })
+  | (Bevanda & { _type: "bevanda" })
+  | (Birra & { _type: "birra" })
+  | (Liquore & { _type: "liquore" });
+
+// ---------------------------------------------------------------------------
+// Collection: Menu Fisso (pranzo, degustazione, ecc.)
+// ---------------------------------------------------------------------------
+
+/**
+ * Categoria del menu fisso (categoria-menu-fisso).
+ * Struttura reale del backend (verificata via API):
+ * - `elementi.docs`: array di ID degli elementi menu-fisso appartenenti a questa categoria
+ */
+export interface CategoriaMenuFisso {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  inLista?: boolean;
+  elementi?: { docs: number[]; hasNextPage: boolean };
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Servizio aggiuntivo incluso in un menu fisso (es. coperto, acqua).
+ */
+export interface ServizioMenuFisso {
+  id: number;
+  nome: string;
+  prezzo: number;
+  descrizione?: string;
+  inLista?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Elemento della collection "menu-fisso".
+ * Struttura reale del backend (verificata via API):
+ * - `categoria`: oggetto CategoriaMenuFisso (popolato con depth>=1)
+ * - `piatti`: array di Piatto (popolati con depth>=1)
+ * - `servizi`: array di ServizioMenuFisso (popolati con depth>=1)
+ */
+export interface MenuFisso {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  prezzo: number;
+  inLista: boolean;
+  /** Categoria del menu fisso (es. "Business lunch", "Degustazione") */
+  categoria: CategoriaMenuFisso | number;
+  /** Piatti inclusi in questo menu */
+  piatti: (Piatto | number)[];
+  /** Servizi aggiuntivi inclusi (es. coperto) */
+  servizi?: (ServizioMenuFisso | number)[];
+  ordine?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
 // Global: MenuConfig — Sezioni e Visibilità
 // ---------------------------------------------------------------------------
 
@@ -332,13 +482,17 @@ export interface Generali {
 export interface StaticMenuData {
   piatti: Piatto[];
   vini: Vino[];
+  menuFissi: MenuFisso[];
+  bevande: Bevanda[];
+  birre: Birra[];
+  liquori: Liquore[];
   /** Categorie estratte dai piatti (non da endpoint dedicato) */
   categorie: CategoriaMenu[];
   allergeni: Allergene[];
   menuConfig: MenuConfig;
   generali: Generali;
   /**
-   * Sezioni già risolte a build-time: ogni sezione ha i piatti/vini
+   * Sezioni già risolte a build-time: ogni sezione ha gli items (tipo unione)
    * filtrati secondo la configurazione del Query Builder (filterMode + targetCategories).
    * Pronte per il rendering — non richiedono ulteriore elaborazione a runtime.
    */
@@ -359,7 +513,8 @@ export type ActiveSlot = "lunch" | "dinner" | null;
 export interface SezioneRisolta {
   slug: string;
   titolo: string;
-  piatti: Piatto[];
-  vini: Vino[];
+  /** Lista unificata di voci renderizzabili con MenuSection (piatti, vini, bevande, ecc.) */
+  items: MenuItem[];
+  menuFissi: MenuFisso[];
   isSpecialPeriod: boolean;
 }

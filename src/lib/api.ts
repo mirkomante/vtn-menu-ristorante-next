@@ -17,9 +17,14 @@
 
 import type {
   Allergene,
+  Bevanda,
+  Birra,
   CategoriaMenu,
   Generali,
+  Liquore,
   MenuConfig,
+  MenuFisso,
+  MenuItem,
   PayloadListResponse,
   Piatto,
   SezioneMenuConfig,
@@ -221,64 +226,168 @@ const FALLBACK_GENERALI: Generali = {
 // Query Builder — risoluzione sezioni virtuali
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Helpers: conversione a MenuItem
+// ---------------------------------------------------------------------------
+
+/** Aggiunge il discriminante `_type` a un Piatto per ottenere un MenuItem */
+function piattoToItem(p: Piatto): MenuItem { return { ...p, _type: "piatto" }; }
+/** Aggiunge il discriminante `_type` a un Vino per ottenere un MenuItem */
+function vinoToItem(v: Vino): MenuItem { return { ...v, _type: "vino" }; }
+/** Aggiunge il discriminante `_type` a una Bevanda per ottenere un MenuItem */
+function bevandaToItem(b: Bevanda): MenuItem { return { ...b, _type: "bevanda" }; }
+/** Aggiunge il discriminante `_type` a una Birra per ottenere un MenuItem */
+function birraToItem(b: Birra): MenuItem { return { ...b, _type: "birra" }; }
+/** Aggiunge il discriminante `_type` a un Liquore per ottenere un MenuItem */
+function liquoreToItem(l: Liquore): MenuItem { return { ...l, _type: "liquore" }; }
+
+// ---------------------------------------------------------------------------
+// Helpers: estrazione ID categoria da un record generico
+// ---------------------------------------------------------------------------
+
+function extractCatId(cat: unknown): number | undefined {
+  if (typeof cat === "number") return cat;
+  if (typeof cat === "object" && cat !== null) {
+    const id = (cat as Record<string, unknown>).id;
+    if (typeof id === "number") return id;
+    if (typeof id === "string") return parseInt(id, 10) || undefined;
+  }
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Query Builder — risoluzione sezioni virtuali
+// ---------------------------------------------------------------------------
+
 /**
  * Risolve una sezione virtuale del menu applicando la logica del Query Builder.
  *
- * Gestisce la struttura reale del backend:
- * - sourceCollection è un array → usa il primo elemento riconosciuto
- * - targetCategories usa { relationTo, value: { id } } (non array di id)
- * - filterMode: "all" | "include" | "exclude"
+ * Restituisce `{ items: MenuItem[], menuFissi: MenuFisso[] }`:
+ * - `items`: lista unificata di voci renderizzabili (piatti, vini, bevande, birre, liquori)
+ * - `menuFissi`: menu a prezzo fisso (struttura diversa, renderizzati separatamente)
  *
- * Collection supportate: "piatti", "vini"
- * Collection non ancora implementate: "menu-fisso", "bevande", "birre", "liquori"
+ * Collection supportate: "piatti", "vini", "bevande", "birre", "liquori", "menu-fisso"
  */
 export function resolveMenuSection(
   sezione: SezioneMenuConfig,
   piatti: Piatto[],
-  vini: Vino[]
-): { piatti: Piatto[]; vini: Vino[] } {
+  vini: Vino[],
+  menuFissi: MenuFisso[],
+  bevande: Bevanda[],
+  birre: Birra[],
+  liquori: Liquore[]
+): { items: MenuItem[]; menuFissi: MenuFisso[] } {
   const sources = sezione.sourceCollection ?? ["piatti"];
   const filterMode = sezione.filterMode ?? "all";
 
   // Determina la collection primaria (prima riconosciuta)
-  const primarySource = sources.find((s) => s === "piatti" || s === "vini") ?? sources[0];
+  const primarySource = sources.find(
+    (s) => s === "piatti" || s === "vini" || s === "menu-fisso" ||
+           s === "bevande" || s === "birre" || s === "liquori"
+  ) ?? sources[0];
 
-  // Costruisce il set degli id categoria target da targetCategories (struttura reale)
+  // Costruisce il set degli id categoria target da targetCategories (struttura reale).
+  // Payload con depth=2 popola value come oggetto { id, nome, ... }.
+  // Con depth<2 value potrebbe essere un numero (ID non popolato) — gestiamo entrambi.
   const targetIds = new Set<number>();
   if (filterMode !== "all" && sezione.targetCategories?.length) {
     for (const ref of sezione.targetCategories) {
-      const id = ref.value?.id;
-      if (typeof id === "number") targetIds.add(id);
+      const id = extractCatId(ref.value as unknown);
+      if (id !== undefined) targetIds.add(id);
     }
   }
 
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `[resolveMenuSection] "${sezione.label}" | primarySource=${primarySource} | filterMode=${filterMode} | targetIds=[${[...targetIds].join(",")}]`
+    );
+  }
+
+  // ── Menu Fisso ────────────────────────────────────────────────────────────
+  if (primarySource === "menu-fisso") {
+    let mfRisolti = filterMode === "all" || targetIds.size === 0
+      ? [...menuFissi]
+      : menuFissi.filter((mf) => {
+          const catId = extractCatId(mf.categoria);
+          if (catId === undefined) return false;
+          return filterMode === "include" ? targetIds.has(catId) : !targetIds.has(catId);
+        });
+    mfRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[resolveMenuSection] "${sezione.label}" → menuFissi: ${mfRisolti.length}/${menuFissi.length}`);
+    }
+    return { items: [], menuFissi: mfRisolti };
+  }
+
+  // ── Vini ──────────────────────────────────────────────────────────────────
   if (primarySource === "vini") {
-    return { piatti: [], vini: [...vini] };
+    const items = vini.map(vinoToItem);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[resolveMenuSection] "${sezione.label}" → vini: ${items.length}`);
+    }
+    return { items, menuFissi: [] };
   }
 
-  if (primarySource !== "piatti") {
-    // Collection non ancora implementata (menu-fisso, bevande, birre, liquori)
-    // Restituisce lista vuota — la sezione sarà visibile ma senza contenuto
-    return { piatti: [], vini: [] };
+  // ── Bevande ───────────────────────────────────────────────────────────────
+  if (primarySource === "bevande") {
+    // "Bevande" può aggregare più collection (es. ["bevande", "birre"])
+    const allItems: MenuItem[] = [];
+    for (const src of sources) {
+      if (src === "bevande") allItems.push(...bevande.map(bevandaToItem));
+      else if (src === "birre") allItems.push(...birre.map(birraToItem));
+    }
+    allItems.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[resolveMenuSection] "${sezione.label}" → bevande+birre: ${allItems.length}`);
+    }
+    return { items: allItems, menuFissi: [] };
   }
 
-  // Filtra i piatti
+  // ── Birre (come source primaria standalone) ───────────────────────────────
+  if (primarySource === "birre") {
+    const items = birre.map(birraToItem);
+    items.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+    return { items, menuFissi: [] };
+  }
+
+  // ── Liquori / Distillati ──────────────────────────────────────────────────
+  if (primarySource === "liquori") {
+    const items = liquori.map(liquoreToItem);
+    items.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[resolveMenuSection] "${sezione.label}" → liquori: ${items.length}`);
+    }
+    return { items, menuFissi: [] };
+  }
+
+  // ── Piatti ────────────────────────────────────────────────────────────────
   let piattiRisolti: Piatto[];
 
   if (filterMode === "all" || targetIds.size === 0) {
+    if (filterMode !== "all" && targetIds.size === 0) {
+      console.warn(
+        `[resolveMenuSection] "${sezione.label}" filterMode="${filterMode}" ma targetIds è vuoto. ` +
+        `Mostro tutti i piatti.`
+      );
+    }
     piattiRisolti = [...piatti];
   } else {
     piattiRisolti = piatti.filter((p) => {
-      const catId = typeof p.categoria === "object" ? p.categoria?.id : p.categoria;
-      if (catId === null || catId === undefined) return false;
-      if (filterMode === "include") return targetIds.has(catId as number);
-      if (filterMode === "exclude") return !targetIds.has(catId as number);
-      return true;
+      const catId = extractCatId(p.categoria);
+      if (catId === undefined) return false;
+      return filterMode === "include" ? targetIds.has(catId) : !targetIds.has(catId);
     });
   }
 
   piattiRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-  return { piatti: piattiRisolti, vini: [] };
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `[resolveMenuSection] "${sezione.label}" → piatti: ${piattiRisolti.length}/${piatti.length}`
+    );
+  }
+
+  return { items: piattiRisolti.map(piattoToItem), menuFissi: [] };
 }
 
 /**
@@ -287,20 +396,21 @@ export function resolveMenuSection(
 function resolveAllSezioni(
   sezioni: SezioneMenuConfig[],
   piatti: Piatto[],
-  vini: Vino[]
+  vini: Vino[],
+  menuFissi: MenuFisso[],
+  bevande: Bevanda[],
+  birre: Birra[],
+  liquori: Liquore[]
 ): SezioneRisolta[] {
   return sezioni.map((sezione): SezioneRisolta => {
-    const { piatti: piattiRisolti, vini: viniRisolti } = resolveMenuSection(
-      sezione,
-      piatti,
-      vini
-    );
+    const { items, menuFissi: menuFissiRisolti } =
+      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori);
 
     return {
       slug: sezione.slug,
       titolo: sezione.label,
-      piatti: piattiRisolti,
-      vini: viniRisolti,
+      items,
+      menuFissi: menuFissiRisolti,
       isSpecialPeriod: false,
     };
   });
@@ -325,13 +435,18 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     throw new Error("NEXT_PUBLIC_PAYLOAD_URL non è configurata nelle variabili d'ambiente.");
   }
 
-  const [piatti, vini, allergeni, menuConfigRaw, generaliRaw] = await Promise.all([
-    fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
-    fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}' }),
-    fetchAllDocs<Allergene>("allergeni"),
-    fetchGlobalSafe<MenuConfig>("menu-config"),
-    fetchGlobalSafe<Generali>("generali"),
-  ]);
+  const [piatti, vini, menuFissi, bevande, birre, liquori, allergeni, menuConfigRaw, generaliRaw] =
+    await Promise.all([
+      fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
+      fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}' }),
+      fetchAllDocs<MenuFisso>("menu-fisso", { where: '{"inLista":{"equals":true}}', depth: "2" }),
+      fetchAllDocs<Bevanda>("bevande", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+      fetchAllDocs<Birra>("birre", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+      fetchAllDocs<Liquore>("liquori", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+      fetchAllDocs<Allergene>("allergeni"),
+      fetchGlobalSafe<MenuConfig>("menu-config"),
+      fetchGlobalSafe<Generali>("generali"),
+    ]);
 
   const categorie = extractCategorie(piatti);
 
@@ -375,9 +490,14 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
   }
 
   // Risolvi tutte le sezioni a build-time (Query Builder)
-  const sezioniRisolte = resolveAllSezioni(menuConfig.standardItems!, piatti, vini);
+  const sezioniRisolte = resolveAllSezioni(
+    menuConfig.standardItems!, piatti, vini, menuFissi, bevande, birre, liquori
+  );
 
-  return { piatti, vini, categorie, allergeni, menuConfig, generali, sezioniRisolte };
+  return {
+    piatti, vini, menuFissi, bevande, birre, liquori,
+    categorie, allergeni, menuConfig, generali, sezioniRisolte,
+  };
 }
 
 // ---------------------------------------------------------------------------

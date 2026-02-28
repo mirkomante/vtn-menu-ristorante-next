@@ -5,10 +5,11 @@
  *
  * Riceve una SezioneRisolta (già risolta dal Query Builder a build-time) e:
  * 1. Inizializza MenuProvider per il polling della disponibilità real-time.
- * 2. Mostra il titolo della sezione e la lista dei piatti con DishCard.
+ * 2. Mostra il titolo della sezione e la lista items con DishCard (piatti, vini, bevande…).
  * 3. Filtra automaticamente i piatti esauriti tramite MenuSection.
+ * 4. Mostra i menu fissi (pranzo, degustazione) con layout dedicato.
  *
- * La sezione può contenere piatti da più categorie (aggregazione virtuale)
+ * La sezione può contenere voci da più categorie (aggregazione virtuale)
  * o un sottoinsieme filtrato per inclusione/esclusione — tutto già risolto
  * a build-time da resolveMenuSection() in api.ts.
  */
@@ -68,51 +69,68 @@ interface CategoryContentProps {
 }
 
 function CategoryContent({ sezione }: CategoryContentProps) {
-  const { availability, status, menuConfig, generali } = useMenu();
+  const { availability, menuConfig } = useMenu();
 
-  // Costruisce una CategoriaMenu sintetica per MenuSection
-  // (necessaria per il titolo e l'anchor id della sezione)
+  // Categoria sintetica per MenuSection (titolo + anchor id)
   const categoriaVirtuale = {
-    id: 0,
     nome: sezione.titolo,
     slug: sezione.slug,
-    attiva: true,
-    createdAt: "",
-    updatedAt: "",
   };
+
+  const hasItems = sezione.items.length > 0;
+  const hasMenuFissi = sezione.menuFissi.length > 0;
 
   return (
     <>
-      <MenuHeader menuConfig={menuConfig} generali={generali} status={status} />
+      <MenuHeader menuConfig={menuConfig} />
       <BackButton />
 
       <main className="min-h-screen bg-background">
         <Container as="div" className="py-8">
-          {sezione.piatti.length === 0 && sezione.vini.length === 0 ? (
+          {!hasItems && !hasMenuFissi ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Text variant="lead" muted>
-                Nessun piatto disponibile in questa sezione.
+                Nessun contenuto disponibile in questa sezione.
               </Text>
             </div>
           ) : (
             <>
-              {sezione.piatti.length > 0 && (
+              {/* Voci generiche: piatti, vini, bevande, birre, liquori */}
+              {hasItems && (
                 <MenuSection
                   categoria={categoriaVirtuale}
-                  piatti={sezione.piatti}
+                  items={sezione.items}
                   availability={availability}
                 />
               )}
 
-              {sezione.vini.length > 0 && (
+              {/* Menu a prezzo fisso (pranzo, degustazione) */}
+              {hasMenuFissi && (
                 <section className="py-10">
                   <Heading level={2} color="bordeaux" className="mb-6">
                     {sezione.titolo}
                   </Heading>
-                  {/* Placeholder: WineCard da implementare */}
-                  <Text variant="body" muted>
-                    {sezione.vini.length} vini disponibili.
-                  </Text>
+                  <div className="space-y-4">
+                    {sezione.menuFissi.map((mf) => (
+                      <div key={mf.id} className="rounded-lg border border-surface-dark/10 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <Text variant="body" className="font-medium">
+                              {mf.nome}
+                            </Text>
+                            {mf.descrizione && (
+                              <Text variant="small" muted className="mt-1">
+                                {mf.descrizione}
+                              </Text>
+                            )}
+                          </div>
+                          <Text variant="body" className="shrink-0 font-medium">
+                            €{mf.prezzo.toFixed(2)}
+                          </Text>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </section>
               )}
             </>
@@ -130,7 +148,7 @@ function CategoryContent({ sezione }: CategoryContentProps) {
 // ---------------------------------------------------------------------------
 
 export function CategoryPage({ staticData, sezione }: CategoryPageProps) {
-  const { menuConfig, generali, piatti, vini } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori } = staticData;
 
   return (
     <MenuProvider
@@ -138,6 +156,10 @@ export function CategoryPage({ staticData, sezione }: CategoryPageProps) {
       generali={generali}
       piatti={piatti}
       vini={vini}
+      menuFissi={menuFissi}
+      bevande={bevande}
+      birre={birre}
+      liquori={liquori}
     >
       <CategoryContent sezione={sezione} />
     </MenuProvider>

@@ -28,6 +28,8 @@ L'utente scansiona il QR code → vede l'indice delle sezioni → clicca su una 
 **Il routing è guidato da `menu-config.standardItems`, non dalla tassonomia del DB.**
 Lo slug `/menu/[slug]` corrisponde a una "Sezione Virtuale" configurata nel CMS. **Gli slug non esistono nel backend**: vengono generati a build-time con `slugify(label)` in `normalizeStandardItems()`.
 
+> **⚠️ Regola SSG obbligatoria:** Le pagine dinamiche `/menu/[slug]` sono pre-calcolate a build-time. Se aggiungi una nuova rotta dinamica (`[param]`), **devi** esportare `generateStaticParams` che restituisce tutti i valori possibili del parametro. Senza di essa la build con `output: 'export'` fallisce con l'errore `"Page is missing param in generateStaticParams()"`. La fonte di verità per gli slug è sempre `sezioniRisolte`, non `menuConfig.standardItems` direttamente.
+
 `menu-config` (Global Payload) è un **Query Builder**: ogni sezione ha `filterMode` (`all`/`include`/`exclude`), `sourceCollection` (array di collection), e `targetCategories` (struttura polimorphic Payload). Se non configurato, le sezioni vengono generate automaticamente dalle categorie dei piatti.
 
 Le sezioni vengono risolte a build-time da `resolveMenuSection()` in `api.ts` e salvate in `StaticMenuData.sezioniRisolte`. La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` — non cerca la categoria nel DB.

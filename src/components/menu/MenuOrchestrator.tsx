@@ -71,18 +71,14 @@ function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
             sections.map((sezione) => {
               const categoria =
                 categorieMap.get(sezione.slug) ?? {
-                  id: sezione.slug,
                   nome: sezione.titolo,
                   slug: sezione.slug,
-                  attiva: true,
-                  createdAt: "",
-                  updatedAt: "",
                 };
               return (
                 <MenuSection
                   key={sezione.slug}
                   categoria={categoria}
-                  piatti={sezione.piatti}
+                  items={sezione.items}
                   availability={availability}
                 />
               );
@@ -120,7 +116,7 @@ function EmptyMenu({ isOpen }: { isOpen: boolean }) {
 // ---------------------------------------------------------------------------
 
 export function MenuOrchestrator({ staticData }: MenuOrchestratorProps) {
-  const { menuConfig, generali, piatti, vini, categorie } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori, categorie } = staticData;
 
   // Mappa slug → CategoriaMenu costruita una volta sola (stabile tra i render)
   const categorieMap: CategorieMap = new Map(
@@ -133,6 +129,10 @@ export function MenuOrchestrator({ staticData }: MenuOrchestratorProps) {
       generali={generali}
       piatti={piatti}
       vini={vini}
+      menuFissi={menuFissi}
+      bevande={bevande}
+      birre={birre}
+      liquori={liquori}
     >
       <MenuContent categorieMap={categorieMap} />
     </MenuProvider>

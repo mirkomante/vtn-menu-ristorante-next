@@ -1,14 +1,18 @@
 /**
  * Pagina dettaglio sezione — Server Component (build-time).
  *
- * Route: /menu/[slug]  (es. /menu/antipasti, /menu/specialita-carne, /menu/vini)
+ * Route: /menu/[slug]  (es. /menu/il-menu-alla-carta, /menu/i-nostri-vini)
  *
- * IMPORTANTE: il routing è guidato da `menu-config`, non dalla tassonomia del DB.
- * Lo slug corrisponde a una "Sezione Virtuale" configurata nel CMS, che può
- * aggregare più categorie o filtrare i piatti in modo complesso (Query Builder).
+ * IMPORTANTE: il routing è guidato da `menu-config.standardItems`, non dalla
+ * tassonomia del DB. Gli slug NON esistono nel backend — vengono generati a
+ * build-time da slugify(label) in normalizeStandardItems().
  *
- * generateStaticParams pre-renderizza tutte le sezioni configurate in menu-config.
- * La pagina usa i dati già risolti (sezioniRisolte) prodotti da getStaticMenuData().
+ * generateStaticParams è OBBLIGATORIO con output: 'export' (SSG puro): senza di
+ * esso Next.js non sa quali pagine HTML generare e lancia l'errore
+ * "Page is missing param in generateStaticParams()".
+ *
+ * Usa sezioniRisolte (già filtrate dal Query Builder) come fonte di verità per
+ * gli slug — garantisce che ogni slug generato corrisponda a una sezione reale.
  */
 
 import { notFound } from "next/navigation";
@@ -21,9 +25,10 @@ import { CategoryPage } from "@/components/menu/CategoryPage";
 
 export async function generateStaticParams() {
   try {
-    const { menuConfig } = await getStaticMenuData();
-    // Gli slug vengono da menu-config, non dalle categorie del DB
-    return (menuConfig.sezioni ?? []).map((s) => ({ slug: s.slug }));
+    const { sezioniRisolte } = await getStaticMenuData();
+    return sezioniRisolte
+      .filter((s) => Boolean(s.slug))
+      .map((s) => ({ slug: s.slug }));
   } catch {
     return [];
   }

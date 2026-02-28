@@ -36,7 +36,28 @@ Esempi:
 ```
 
 **Il routing è guidato da `menu-config.standardItems`, non dalla tassonomia del DB.**
-Gli slug non esistono nel backend — vengono generati a build-time con `slugify(label)` da ogni voce di `standardItems`. `generateStaticParams` in `app/menu/[slug]/page.tsx` produce un parametro per ogni sezione.
+Gli slug non esistono nel backend — vengono generati a build-time con `slugify(label)` da ogni voce di `standardItems`.
+
+### `generateStaticParams` — obbligatorio con `output: 'export'`
+
+Con SSG puro (`output: 'export'`), Next.js deve conoscere in anticipo tutti gli slug possibili per generare i file HTML statici. Senza `generateStaticParams`, la build lancia:
+
+```
+Page "/menu/[slug]/page" is missing param "/menu/[slug]" in "generateStaticParams()"
+```
+
+L'implementazione corretta usa `sezioniRisolte` come fonte di verità (non `menuConfig.standardItems` direttamente), perché gli slug vengono generati durante la risoluzione del Query Builder:
+
+```typescript
+export async function generateStaticParams() {
+  const { sezioniRisolte } = await getStaticMenuData();
+  return sezioniRisolte
+    .filter((s) => Boolean(s.slug))
+    .map((s) => ({ slug: s.slug }));
+}
+```
+
+**Regola:** qualsiasi nuova rotta dinamica (`[param]`) aggiunta al progetto **deve** esportare `generateStaticParams`, altrimenti la build SSG fallisce.
 
 Tutte le pagine sono pre-renderizzate a build-time (SSG).
 

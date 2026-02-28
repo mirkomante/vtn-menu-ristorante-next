@@ -1,21 +1,18 @@
 /**
- * DishCard — Componente di dominio per un singolo piatto.
+ * DishCard — Componente di dominio per una voce del menu.
+ *
+ * Accetta qualsiasi `MenuItem` (piatto, vino, bevanda, birra, liquore).
+ * Il campo `_type` discrimina il tipo per mostrare badge e info aggiuntive.
  *
  * Stile: Minimal B2 su sfondo crema.
  * Separatore: border-b border-surface-dark/20 (Bordeaux 20%, 1px).
- * Nessun sfondo card: il testo poggia direttamente sul crema.
  *
- * Assunzione: riceve solo piatti disponibili (il filtro è in MenuSection).
+ * Assunzione: riceve solo voci disponibili (il filtro è in MenuSection).
  * Se per sicurezza riceve isAvailable=false, restituisce null.
- *
- * Struttura dati reale del backend:
- * - Campi dietetici booleani: glutenFree, noUovo, noLatticini, vegan
- * - Allergeni: array di oggetti Allergene o id numerici
- * - Nessun campo tag[] — i tag vengono derivati dai booleani
  */
 
 import { Badge, Heading, Text } from "@/components/ui";
-import type { Allergene, Piatto } from "@/types";
+import type { Allergene, MenuItem, Piatto, Vino } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -37,15 +34,50 @@ function getAllergeneNome(a: Allergene | number): string {
 
 /**
  * Deriva i badge dietetici dai campi booleani del piatto.
- * Restituisce un array di etichette da mostrare come Badge `highlight`.
+ * Solo i Piatto hanno questi campi — per gli altri tipi restituisce [].
  */
-function getDietaryTags(piatto: Piatto): string[] {
+function getDietaryTags(item: MenuItem): string[] {
+  if (item._type !== "piatto") return [];
   const tags: string[] = [];
-  if (piatto.vegan) tags.push("Vegan");
-  if (piatto.glutenFree) tags.push("Gluten Free");
-  if (piatto.noLatticini) tags.push("No Latticini");
-  if (piatto.noUovo) tags.push("No Uovo");
+  if (item.vegan) tags.push("Vegan");
+  if (item.glutenFree) tags.push("Gluten Free");
+  if (item.noLatticini) tags.push("No Latticini");
+  if (item.noUovo) tags.push("No Uovo");
   return tags;
+}
+
+/**
+ * Estrae info aggiuntive da mostrare come badge neutri (grado, capacità, tipologia).
+ * Usate per vini, birre, liquori.
+ */
+function getExtraBadges(item: MenuItem): string[] {
+  const badges: string[] = [];
+
+  if (item._type === "vino") {
+    const v = item as Vino & { _type: "vino" };
+    const tipNome = typeof v.tipologia === "object" ? v.tipologia?.nome : null;
+    if (tipNome) badges.push(tipNome);
+    if (v.cantina) badges.push(v.cantina);
+    if (v.anno) badges.push(v.anno);
+    if (v.capacita) badges.push(v.capacita);
+    if (v.grado) badges.push(`${v.grado}°`);
+  } else if (item._type === "birra" || item._type === "liquore") {
+    const b = item as { _type: string; tipologia?: unknown; grado?: string; capacita?: string };
+    const tipNome = typeof b.tipologia === "object" && b.tipologia !== null
+      ? (b.tipologia as { nome?: string }).nome
+      : null;
+    if (tipNome) badges.push(tipNome);
+    if (b.capacita) badges.push(b.capacita);
+    if (b.grado) badges.push(`${b.grado}°`);
+  } else if (item._type === "bevanda") {
+    const b = item as { _type: string; tipologia?: unknown };
+    const tipNome = typeof b.tipologia === "object" && b.tipologia !== null
+      ? (b.tipologia as { nome?: string }).nome
+      : null;
+    if (tipNome) badges.push(tipNome);
+  }
+
+  return badges.filter(Boolean);
 }
 
 // ---------------------------------------------------------------------------
@@ -53,10 +85,10 @@ function getDietaryTags(piatto: Piatto): string[] {
 // ---------------------------------------------------------------------------
 
 export interface DishCardProps {
-  piatto: Piatto;
+  item: MenuItem;
   /**
    * Fail-safe: se false il componente restituisce null.
-   * In produzione il filtro avviene in MenuSection prima di passare il piatto.
+   * In produzione il filtro avviene in MenuSection prima di passare la voce.
    */
   isAvailable?: boolean;
   /** Classe CSS aggiuntiva per il wrapper esterno */
@@ -68,30 +100,37 @@ export interface DishCardProps {
 // ---------------------------------------------------------------------------
 
 export function DishCard({
-  piatto,
+  item,
   isAvailable = true,
   className = "",
 }: DishCardProps) {
-  // Fail-safe: se il padre non ha filtrato, nascondi silenziosamente
   if (!isAvailable) return null;
 
-  const {
-    nome,
-    descrizione,
-    prezzo,
-    prezzoAlternativo,
-    etichettaPrezzoAlternativo,
-    allergeni,
-  } = piatto;
+  const { nome, descrizione, prezzo } = item;
 
-  const dietaryTags = getDietaryTags(piatto);
-  const allergeniList = (allergeni ?? []).filter(Boolean);
-  const hasFooter = dietaryTags.length > 0 || allergeniList.length > 0;
+  // Prezzo alternativo solo per i piatti
+  const prezzoAlternativo = item._type === "piatto"
+    ? (item as Piatto & { _type: "piatto" }).prezzoAlternativo
+    : undefined;
+  const etichettaPrezzoAlternativo = item._type === "piatto"
+    ? (item as Piatto & { _type: "piatto" }).etichettaPrezzoAlternativo
+    : undefined;
+
+  // Prezzo al calice solo per i vini
+  const prezzoCalice = item._type === "vino"
+    ? (item as Vino & { _type: "vino" }).prezzoCalice
+    : undefined;
+
+  const dietaryTags = getDietaryTags(item);
+  const extraBadges = getExtraBadges(item);
+  const allergeniList = item._type === "piatto"
+    ? ((item as Piatto & { _type: "piatto" }).allergeni ?? []).filter(Boolean)
+    : [];
+  const hasFooter = dietaryTags.length > 0 || allergeniList.length > 0 || extraBadges.length > 0;
 
   return (
     <div
       className={[
-        // Separatore B2: Bordeaux 20%, 1px
         "border-b border-surface-dark/20 py-5",
         className,
       ]
@@ -117,6 +156,11 @@ export function DishCard({
               {formatPrice(prezzoAlternativo)}
             </Text>
           )}
+          {prezzoCalice != null && (
+            <Text variant="caption" as="span" muted className="font-medium">
+              Calice {formatPrice(prezzoCalice)}
+            </Text>
+          )}
         </div>
       </div>
 
@@ -127,17 +171,21 @@ export function DishCard({
         </Text>
       )}
 
-      {/* Footer: tag dietetici + allergeni */}
+      {/* Footer: tag dietetici, extra info, allergeni */}
       {hasFooter && (
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          {/* Tag dietetici (da booleani) → highlight (arancio) */}
           {dietaryTags.map((tag) => (
             <Badge key={tag} variant="highlight">
               {tag}
             </Badge>
           ))}
 
-          {/* Allergeni → allergen (bordo bordeaux sottile) */}
+          {extraBadges.map((badge) => (
+            <Badge key={badge} variant="default">
+              {badge}
+            </Badge>
+          ))}
+
           {allergeniList.map((a) => {
             const nomeAllergene = getAllergeneNome(a as Allergene | number);
             return (
