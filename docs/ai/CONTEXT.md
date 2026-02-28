@@ -20,10 +20,10 @@ Un menu digitale statico per il ristorante **Vietnamonamour** (Milano). Il clien
 
 ```
 /                    → HomeIndex: lista sezioni come card cliccabili
-/menu/[slug]         → CategoryPage: lista piatti di una sezione virtuale
+/menu/[slug]         → CategoryPage: lista voci di una sezione virtuale
 ```
 
-L'utente scansiona il QR code → vede l'indice delle sezioni → clicca su una sezione → vede i piatti. Le sezioni fuori orario (es. "Pranzo" di sera) non compaiono nell'indice.
+L'utente scansiona il QR code → vede l'indice delle sezioni → clicca su una sezione → vede le voci (piatti, vini, bevande, ecc.). Le sezioni fuori orario (es. "Pranzo" di sera) non compaiono nell'indice.
 
 **Il routing è guidato da `menu-config.standardItems`, non dalla tassonomia del DB.**
 Lo slug `/menu/[slug]` corrisponde a una "Sezione Virtuale" configurata nel CMS. **Gli slug non esistono nel backend**: vengono generati a build-time con `slugify(label)` in `normalizeStandardItems()`.
@@ -33,6 +33,8 @@ Lo slug `/menu/[slug]` corrisponde a una "Sezione Virtuale" configurata nel CMS.
 `menu-config` (Global Payload) è un **Query Builder**: ogni sezione ha `filterMode` (`all`/`include`/`exclude`), `sourceCollection` (array di collection), e `targetCategories` (struttura polimorphic Payload). Se non configurato, le sezioni vengono generate automaticamente dalle categorie dei piatti.
 
 Le sezioni vengono risolte a build-time da `resolveMenuSection()` in `api.ts` e salvate in `StaticMenuData.sezioniRisolte`. La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` — non cerca la categoria nel DB.
+
+`resolveMenuSection()` usa una logica **Multi-Source Additiva**: itera su ogni sorgente in `sourceCollection` in modo indipendente, applica il filtro corretto per quella sorgente (estraendo da `targetCategories` solo i ref con il `relationTo` pertinente, es. `"categoria-piatti"` per i piatti e `"categoria-vini"` per i vini), converte gli item in `MenuItem`, poi unisce tutto in un unico array ordinato. Questo supporta sezioni miste come `["piatti", "vini"]` o `["bevande", "birre"]` con filtri specifici per ciascun tipo di dato. L'unica eccezione è `"menu-fisso"`, gestita separatamente perché `MenuFisso` ha struttura diversa da `MenuItem`.
 
 ---
 
@@ -46,11 +48,32 @@ Le sezioni vengono risolte a build-time da `resolveMenuSection()` in `api.ts` e 
 | `src/components/menu/CategoryPage.tsx` | Client Component per la pagina dettaglio | Quando cambia il layout della pagina categoria |
 | `src/types/payload-types.ts` | Tipi TypeScript per Payload + tipi derivati | Quando cambia lo schema del backend |
 | `src/types/disponibilita.ts` | Tipo per il JSON GCS | Quando cambia la struttura del file di disponibilità |
-| `src/lib/api.ts` | Fetcher build-time + client-side | Quando cambiano gli endpoint o la logica di fallback |
+| `src/lib/api.ts` | Fetcher build-time + client-side + Query Builder | Quando cambiano gli endpoint o la logica di filtro |
 | `src/hooks/useTimekeeper.ts` | Logica temporale (apertura, slot) | Quando cambiano le regole di orario |
 | `src/hooks/useMenuStructure.ts` | Logica strutturale (sezioni visibili) | Quando cambia la logica di visibilità sezioni |
 | `src/context/MenuContext.tsx` | Stato globale client-side | Quando si aggiunge stato globale al menu |
 | `app/globals.css` | Tema Tailwind v4 (`@theme`) | Quando si aggiungono colori, font o token |
+
+---
+
+## Tipo unione `MenuItem` — concetto centrale
+
+Tutte le voci del menu (piatti, vini, bevande, birre, liquori) vengono normalizzate in un unico tipo discriminato a build-time:
+
+```typescript
+type MenuItem =
+  | (Piatto   & { _type: "piatto" })
+  | (Vino     & { _type: "vino" })
+  | (Bevanda  & { _type: "bevanda" })
+  | (Birra    & { _type: "birra" })
+  | (Liquore  & { _type: "liquore" });
+```
+
+Il campo `_type` è aggiunto da `api.ts` (funzioni `piattoToItem`, `vinoToItem`, ecc.) — **non esiste nel backend**.
+
+`SezioneRisolta.items: MenuItem[]` è la lista unificata passata a `MenuSection` → `DishCard`. I menu fissi (pranzo, degustazione) hanno struttura diversa e usano `SezioneRisolta.menuFissi: MenuFisso[]`.
+
+**Regola:** `DishCard` e `MenuSection` accettano `MenuItem`, non `Piatto`. Non passare mai un `Piatto` grezzo — aggiungere `_type: "piatto"` prima.
 
 ---
 
@@ -65,20 +88,20 @@ Tre livelli di decisione, eseguiti in sequenza:
    └─ Output: isOpen (bool), activeSlot ('lunch'|'dinner'|null), isHoliday (bool)
 
 2. COSA mostriamo?
-   useMenuStructure({ menuConfig, activeSlot, piatti, vini, sezioniRisolte })
+   useMenuStructure({ menuConfig, activeSlot, piatti, vini, menuFissi, bevande, birre, liquori })
    └─ Filtra sezioni per visibility ("always"/"lunch_only"/"dinner_only")
-   └─ Usa sezioniRisolte già calcolate a build-time
-   └─ Output: SezioneRisolta[] (sezioni con piatti già popolati)
+   └─ Chiama resolveMenuSection() per ogni sezione → items: MenuItem[]
+   └─ Output: SezioneRisolta[] (sezioni con items già popolati)
 
 3. COSA è disponibile?
    getRealTimeAvailability() → polling ogni 5 min
    └─ disponibilita.json su GCS → mappa id→stato
-   └─ MenuSection filtra piatti con stato ≠ 'disponibile'
+   └─ MenuSection filtra items con _type==="piatto" e stato ≠ 'disponibile'
 ```
 
 **Regola fondamentale:** se `activeSlot === null` (fuori orario di servizio), le sezioni con `visibility: 'lunch_only'` o `'dinner_only'` scompaiono. Rimangono solo quelle `'always'` (es. carta vini, bevande).
 
-**Piatto esaurito = piatto invisibile.** Non viene mostrato con opacità ridotta o badge — viene rimosso dalla lista. Il filtro avviene in `MenuSection`, non in `DishCard`.
+**Piatto esaurito = piatto invisibile.** Non viene mostrato con opacità ridotta o badge — viene rimosso dalla lista. Il filtro avviene in `MenuSection` (solo per `_type === "piatto"`), non in `DishCard`. Vini e bevande sono sempre visibili.
 
 ---
 
@@ -104,6 +127,85 @@ Tre livelli di decisione, eseguiti in sequenza:
   allergeni: (Allergene | number)[],
 }
 ```
+
+### Vino (struttura reale)
+
+```typescript
+{
+  id: number,
+  nome: string,
+  prezzo: number,
+  prezzoCalice?: number | null,  // prezzo al calice separato
+  tipologia: TipologiaVino | number,  // embedded o id
+  cantina?: string,
+  anno?: string,
+  capacita?: string,
+  grado?: string,
+  inLista: boolean,
+}
+```
+
+### Bevanda (struttura reale — collection "bevande")
+
+```typescript
+{
+  id: number,
+  nome: string,
+  prezzo: number,
+  descrizione?: string,
+  tipologia: TipologiaBevanda | number,  // es. "Calde", "Vietnamite"
+  nazione?: number | null,
+  inLista: boolean,
+}
+```
+
+### Birra (struttura reale — collection "birre")
+
+```typescript
+{
+  id: number,
+  nome: string,
+  prezzo: number,
+  tipologia: TipologiaBevanda | number,  // es. "Lager"
+  grado?: string,
+  capacita?: string,
+  nazione?: number | null,
+  inLista: boolean,
+}
+```
+
+### Liquore / Distillato (struttura reale — collection "liquori")
+
+```typescript
+{
+  id: number,
+  nome: string,
+  prezzo: number,
+  tipologia: TipologiaBevanda | number,  // es. "Rum", "Whisky"
+  grado?: string,
+  capacita?: string,
+  invecchiamento?: string,
+  nazione?: number | null,
+  inLista: boolean,
+}
+```
+
+### MenuFisso (struttura reale — collection "menu-fisso")
+
+```typescript
+{
+  id: number,
+  nome: string,
+  prezzo: number,
+  descrizione?: string,
+  inLista: boolean,
+  categoria: CategoriaMenuFisso | number,  // es. "Business lunch", "Degustazione"
+  piatti: (Piatto | number)[],   // piatti inclusi nel menu
+  servizi?: (ServizioMenuFisso | number)[],  // es. coperto
+}
+```
+
+> **Nota:** `menu-fisso` deve essere fetchato con `?depth=2` per avere `categoria` e `piatti` popolati.
 
 ### Generali (struttura reale)
 
@@ -136,13 +238,12 @@ Tre livelli di decisione, eseguiti in sequenza:
     sourceCollection: string[],  // ARRAY, es. ["piatti"] o ["bevande","birre"]
     filterMode: "all" | "include" | "exclude",
     targetCategories: Array<{
-      relationTo: string,     // es. "categoria-piatti"
+      relationTo: string,     // es. "categoria-piatti", "categoria-menu-fisso"
       value: { id: number, nome: string, ... }  // popolato solo con ?depth=2
     }>
   }>,
   isActive: boolean,
   activeRange: { start: string | null, end: string | null },
-  specialItems: unknown[]
 }
 ```
 
@@ -172,14 +273,14 @@ app/page.tsx (Server)
   └─ <HomeIndex staticData={...} />
 
 HomeIndex (Client)
-  └─ <MenuProvider menuConfig generali piatti vini sezioniRisolte>
+  └─ <MenuProvider menuConfig generali piatti vini menuFissi bevande birre liquori>
        └─ useTimekeeper(generali) → status
        └─ useMenuStructure → sections (filtrate per slot)
        └─ getRealTimeAvailability → availability
        └─ <IndexContent>
             ├─ <MenuHeader />
             ├─ sections.map(sezione =>
-            │    <SectionCard slug titolo numeroPiatti />
+            │    <SectionCard slug titolo numeroItems />
             │      └─ <Link href="/menu/[slug]"> → naviga alla categoria
             │  )
             └─ <MenuFooter />
@@ -189,25 +290,26 @@ HomeIndex (Client)
 
 ```
 app/menu/[slug]/page.tsx (Server)
-  └─ generateStaticParams() → slug da standardItems (via slugify(label))
+  └─ generateStaticParams() → slug da sezioniRisolte
   └─ getStaticMenuData() → StaticMenuData
   └─ cerca sezione in sezioniRisolte per slug
   └─ <CategoryPage staticData sezione />
 
 CategoryPage (Client)
-  └─ <MenuProvider menuConfig generali piatti vini>
+  └─ <MenuProvider menuConfig generali piatti vini menuFissi bevande birre liquori>
        └─ getRealTimeAvailability → availability
        └─ <CategoryContent sezione>
             ├─ <MenuHeader />
             ├─ <BackButton /> → Link href="/"
-            ├─ <MenuSection categoria={virtuale} piatti={sezione.piatti} availability />
-            │    └─ piattiVisibili.map(piatto =>
-            │         <DishCard piatto />
-            │       )
+            ├─ sezione.items.length > 0 →
+            │    <MenuSection categoria={virtuale} items={sezione.items} availability />
+            │      └─ itemsVisibili.map(item => <DishCard item />)
+            ├─ sezione.menuFissi.length > 0 →
+            │    layout dedicato con nome + prezzo per ogni MenuFisso
             └─ <MenuFooter />
 ```
 
-**Regola:** `sezione.piatti` contiene già i piatti filtrati dal Query Builder (filterMode + targetCategories). `MenuSection` filtra ulteriormente per disponibilità real-time. `DishCard` non sa nulla di disponibilità.
+**Regola:** `sezione.items` contiene già le voci filtrate dal Query Builder (logica multi-source additiva: ogni sorgente filtrata indipendentemente per `filterMode` + `targetCategories`, poi unite). `MenuSection` filtra ulteriormente per disponibilità real-time (solo `_type === "piatto"`). `DishCard` non sa nulla di disponibilità.
 
 **Regola:** `MenuProvider` è presente in **entrambe** le pagine. È necessario anche nella pagina dettaglio per il polling della disponibilità real-time.
 
@@ -223,19 +325,20 @@ CategoryPage (Client)
 - `targetCategories` usa la struttura polimorphic: `{ relationTo: string, value: { id: number, nome: string } }`.
 - Importa sempre i tipi da `@/types` (mai percorsi relativi per i tipi).
 - `fetch` nativo — nessuna libreria HTTP esterna.
+- **Non passare `Piatto` grezzo a `DishCard` o `MenuSection`** — usa sempre `MenuItem` con `_type` aggiunto.
 
 ### Componenti
 
 - `"use client"` solo dove serve interattività o hook React. Tutto il resto è Server Component.
 - Non ricreare la struttura visiva di `DishCard` — importa e usa il componente esistente.
-- Per una nuova card (es. vino), crea `WineCard` seguendo lo stesso pattern di `DishCard`.
+- `DishCard` accetta `item: MenuItem` (non `piatto: Piatto`). `MenuSection` accetta `items: MenuItem[]` (non `piatti: Piatto[]`).
 - Non aggiungere bordi, background o shadow ai wrapper di `MenuSection` — layout aperto.
 
 ### Design System
 
 - Sfondo pagina: **sempre** `bg-background` (`#FFEDD7`). Mai `bg-white`.
 - **Liste piatti: usa sempre lo stile Minimal B2** — nessun sfondo, separatore `border-b border-surface-dark/20` (bordeaux 20%, 1px). Non usare card bianche (`bg-surface`), bordi oro (`border-accent-gold`) né bordi arancioni spessi (`border-b-2 border-accent-orange`).
-- Badge `allergen`: **solo** per allergeni. Badge `highlight`: per vantaggi dietetici e tag promozionali.
+- Badge `allergen`: **solo** per allergeni. Badge `highlight`: per vantaggi dietetici e tag promozionali. Badge `default`: per info neutre (tipologia vino, capacità, grado alcolico).
 - Usa `<Heading>` e `<Text>` — mai `font-serif`/`font-sans` su HTML grezzo.
 - Tema Tailwind: modifica **solo** `app/globals.css` nel blocco `@theme`.
 - Header: usa `bg-background` con `text-surface-dark` (bordeaux su crema). **Non usare `bg-surface-dark` per l'header.**
@@ -263,7 +366,9 @@ Prima di scrivere qualsiasi classe CSS/Tailwind, verifica sempre:
 1. Aggiungi l'interfaccia in `src/types/payload-types.ts`.
 2. Aggiungi il tipo a `StaticMenuData` se serve a build-time.
 3. Aggiungi `fetchAllDocs<NuovoTipo>("slug")` in `getStaticMenuData()` dentro `Promise.all`.
-4. Aggiorna `resolveMenuSection()` in `api.ts` per gestire la nuova `sourceCollection`.
+4. Aggiungi la funzione `nuovoTipoToItem()` in `api.ts` che aggiunge `_type`.
+5. Aggiorna `resolveMenuSection()` in `api.ts` per gestire la nuova `sourceCollection`.
+6. Propaga il nuovo array attraverso `MenuProvider` → `useMenuStructure`.
 
 ### Nuova sezione del menu
 
@@ -284,7 +389,7 @@ Aggiungi il campo a `MenuContextValue` in `src/context/MenuContext.tsx`, aggiorn
 1. Crea il file in `src/components/menu/NomeComponente.tsx`.
 2. Esportalo dal barrel `src/components/menu/index.ts`.
 3. Segui lo stile Minimal (nessun sfondo, separatore bordeaux).
-4. Se mostra dati di un piatto, usa `DishCard` invece di ricreare la struttura.
+4. Se mostra voci del menu, usa `DishCard` con `item: MenuItem` invece di ricreare la struttura.
 
 ---
 
@@ -302,4 +407,4 @@ Il sistema è progettato per non crashare mai in produzione:
 | GCS irraggiungibile a runtime | `availability = null` → tutto mostrato come disponibile |
 | Sezione con tutti i piatti esauriti | `MenuSection` restituisce `null` → sezione invisibile |
 | Ristorante chiuso | Banner discreto nell'header, menu consultabile |
-| `sourceCollection` non supportata (es. "bevande") | `resolveMenuSection` restituisce sezione vuota, non crasha |
+| `sourceCollection` con sorgente non supportata (es. nuova collection futura) | `resolveMenuSection` logga un warning e ignora quella sorgente, le altre vengono processate normalmente |

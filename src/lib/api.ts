@@ -260,13 +260,82 @@ function extractCatId(cat: unknown): number | undefined {
 // ---------------------------------------------------------------------------
 
 /**
- * Risolve una sezione virtuale del menu applicando la logica del Query Builder.
+ * Mappa ogni SourceCollection al suo array grezzo e alla funzione di conversione.
+ * Usata da resolveMenuSection per iterare in modo agnostico sulle sorgenti.
+ */
+type SourceData = {
+  piatti: Piatto[];
+  vini: Vino[];
+  bevande: Bevanda[];
+  birre: Birra[];
+  liquori: Liquore[];
+};
+
+/**
+ * Estrae i target ID pertinenti a una specifica sorgente, filtrando per `relationTo`.
+ * Ogni sorgente ha il proprio `relationTo` nel backend Payload (struttura polimorphic).
+ */
+function getTargetIdsForSource(
+  source: SourceCollection,
+  targetCategories: TargetCategoryRef[],
+  filterMode: SezioneMenuConfig["filterMode"]
+): Set<number> {
+  const ids = new Set<number>();
+  if (filterMode === "all" || !targetCategories.length) return ids;
+
+  const relationToMap: Record<string, string> = {
+    piatti:   "categoria-piatti",
+    vini:     "categoria-vini",
+    bevande:  "categoria-bevande",
+    birre:    "categoria-birre",
+    liquori:  "categoria-liquori",
+  };
+
+  const expectedRelationTo = relationToMap[source];
+
+  for (const ref of targetCategories) {
+    // Se non c'è una mappatura nota, includiamo tutti i target (comportamento permissivo)
+    if (!expectedRelationTo || ref.relationTo === expectedRelationTo) {
+      const id = extractCatId(ref.value as unknown);
+      if (id !== undefined) ids.add(id);
+    }
+  }
+
+  return ids;
+}
+
+/**
+ * Applica il filtro per categoria a un array di item già convertiti in MenuItem.
+ * Usa `extractCatId` per gestire sia oggetti popolati che ID numerici.
+ */
+function applyFilter<T extends { categoria?: unknown }>(
+  items: T[],
+  targetIds: Set<number>,
+  filterMode: SezioneMenuConfig["filterMode"]
+): T[] {
+  if (filterMode === "all" || targetIds.size === 0) return items;
+
+  return items.filter((item) => {
+    const catId = extractCatId(item.categoria);
+    if (catId === undefined) return false;
+    return filterMode === "include" ? targetIds.has(catId) : !targetIds.has(catId);
+  });
+}
+
+/**
+ * Risolve una sezione virtuale del menu applicando la logica del Query Builder
+ * con approccio **Multi-Source Additivo**: ogni sorgente in `sourceCollection`
+ * viene processata e filtrata indipendentemente, poi i risultati vengono uniti.
  *
  * Restituisce `{ items: MenuItem[], menuFissi: MenuFisso[] }`:
  * - `items`: lista unificata di voci renderizzabili (piatti, vini, bevande, birre, liquori)
  * - `menuFissi`: menu a prezzo fisso (struttura diversa, renderizzati separatamente)
  *
  * Collection supportate: "piatti", "vini", "bevande", "birre", "liquori", "menu-fisso"
+ *
+ * Esempio: `sourceCollection: ["piatti", "vini"]` con `filterMode: "include"` e
+ * `targetCategories` misti produrrà un array che contiene sia piatti filtrati
+ * per `categoria-piatti` che vini filtrati per `categoria-vini`.
  */
 export function resolveMenuSection(
   sezione: SezioneMenuConfig,
@@ -279,115 +348,97 @@ export function resolveMenuSection(
 ): { items: MenuItem[]; menuFissi: MenuFisso[] } {
   const sources = sezione.sourceCollection ?? ["piatti"];
   const filterMode = sezione.filterMode ?? "all";
+  const targetCategories = sezione.targetCategories ?? [];
 
-  // Determina la collection primaria (prima riconosciuta)
-  const primarySource = sources.find(
-    (s) => s === "piatti" || s === "vini" || s === "menu-fisso" ||
-           s === "bevande" || s === "birre" || s === "liquori"
-  ) ?? sources[0];
-
-  // Costruisce il set degli id categoria target da targetCategories (struttura reale).
-  // Payload con depth=2 popola value come oggetto { id, nome, ... }.
-  // Con depth<2 value potrebbe essere un numero (ID non popolato) — gestiamo entrambi.
-  const targetIds = new Set<number>();
-  if (filterMode !== "all" && sezione.targetCategories?.length) {
-    for (const ref of sezione.targetCategories) {
-      const id = extractCatId(ref.value as unknown);
-      if (id !== undefined) targetIds.add(id);
+  // ── Menu Fisso — gestito separatamente (struttura dati diversa da MenuItem) ──
+  if (sources.includes("menu-fisso")) {
+    const mfTargetIds = new Set<number>();
+    if (filterMode !== "all") {
+      for (const ref of targetCategories) {
+        if (ref.relationTo === "categoria-menu-fisso") {
+          const id = extractCatId(ref.value as unknown);
+          if (id !== undefined) mfTargetIds.add(id);
+        }
+      }
     }
-  }
 
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      `[resolveMenuSection] "${sezione.label}" | primarySource=${primarySource} | filterMode=${filterMode} | targetIds=[${[...targetIds].join(",")}]`
-    );
-  }
-
-  // ── Menu Fisso ────────────────────────────────────────────────────────────
-  if (primarySource === "menu-fisso") {
-    let mfRisolti = filterMode === "all" || targetIds.size === 0
+    let mfRisolti = filterMode === "all" || mfTargetIds.size === 0
       ? [...menuFissi]
       : menuFissi.filter((mf) => {
           const catId = extractCatId(mf.categoria);
           if (catId === undefined) return false;
-          return filterMode === "include" ? targetIds.has(catId) : !targetIds.has(catId);
+          return filterMode === "include" ? mfTargetIds.has(catId) : !mfTargetIds.has(catId);
         });
+
     mfRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+
     if (process.env.NODE_ENV === "development") {
       console.log(`[resolveMenuSection] "${sezione.label}" → menuFissi: ${mfRisolti.length}/${menuFissi.length}`);
     }
     return { items: [], menuFissi: mfRisolti };
   }
 
-  // ── Vini ──────────────────────────────────────────────────────────────────
-  if (primarySource === "vini") {
-    const items = vini.map(vinoToItem);
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[resolveMenuSection] "${sezione.label}" → vini: ${items.length}`);
+  // ── Logica Multi-Source Additiva ──────────────────────────────────────────
+  // Mappa sorgente → dati grezzi e converter. Scalabile: aggiungere una nuova
+  // collection richiede solo una voce in questa struttura.
+  const sourceData: SourceData = { piatti, vini, bevande, birre, liquori };
+
+  type SourceEntry =
+    | { raw: Piatto[];   convert: (x: Piatto)   => MenuItem }
+    | { raw: Vino[];     convert: (x: Vino)     => MenuItem }
+    | { raw: Bevanda[];  convert: (x: Bevanda)  => MenuItem }
+    | { raw: Birra[];    convert: (x: Birra)    => MenuItem }
+    | { raw: Liquore[];  convert: (x: Liquore)  => MenuItem };
+
+  const sourceMap: Record<string, SourceEntry> = {
+    piatti:  { raw: sourceData.piatti,  convert: piattoToItem  as (x: Piatto)   => MenuItem },
+    vini:    { raw: sourceData.vini,    convert: vinoToItem    as (x: Vino)     => MenuItem },
+    bevande: { raw: sourceData.bevande, convert: bevandaToItem as (x: Bevanda)  => MenuItem },
+    birre:   { raw: sourceData.birre,   convert: birraToItem   as (x: Birra)    => MenuItem },
+    liquori: { raw: sourceData.liquori, convert: liquoreToItem as (x: Liquore)  => MenuItem },
+  };
+
+  const allItems: MenuItem[] = [];
+
+  for (const source of sources) {
+    const entry = sourceMap[source as keyof typeof sourceMap];
+
+    if (!entry) {
+      console.warn(`[resolveMenuSection] "${sezione.label}" — sourceCollection "${source}" non supportata. Ignorata.`);
+      continue;
     }
-    return { items, menuFissi: [] };
-  }
 
-  // ── Bevande ───────────────────────────────────────────────────────────────
-  if (primarySource === "bevande") {
-    // "Bevande" può aggregare più collection (es. ["bevande", "birre"])
-    const allItems: MenuItem[] = [];
-    for (const src of sources) {
-      if (src === "bevande") allItems.push(...bevande.map(bevandaToItem));
-      else if (src === "birre") allItems.push(...birre.map(birraToItem));
-    }
-    allItems.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[resolveMenuSection] "${sezione.label}" → bevande+birre: ${allItems.length}`);
-    }
-    return { items: allItems, menuFissi: [] };
-  }
+    // Recupera i target ID pertinenti solo a questa sorgente
+    const targetIds = getTargetIdsForSource(source as SourceCollection, targetCategories, filterMode);
 
-  // ── Birre (come source primaria standalone) ───────────────────────────────
-  if (primarySource === "birre") {
-    const items = birre.map(birraToItem);
-    items.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-    return { items, menuFissi: [] };
-  }
-
-  // ── Liquori / Distillati ──────────────────────────────────────────────────
-  if (primarySource === "liquori") {
-    const items = liquori.map(liquoreToItem);
-    items.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[resolveMenuSection] "${sezione.label}" → liquori: ${items.length}`);
-    }
-    return { items, menuFissi: [] };
-  }
-
-  // ── Piatti ────────────────────────────────────────────────────────────────
-  let piattiRisolti: Piatto[];
-
-  if (filterMode === "all" || targetIds.size === 0) {
-    if (filterMode !== "all" && targetIds.size === 0) {
+    if (filterMode !== "all" && targetCategories.length > 0 && targetIds.size === 0) {
       console.warn(
-        `[resolveMenuSection] "${sezione.label}" filterMode="${filterMode}" ma targetIds è vuoto. ` +
-        `Mostro tutti i piatti.`
+        `[resolveMenuSection] "${sezione.label}" | source="${source}" | filterMode="${filterMode}" ` +
+        `ma nessun targetCategory pertinente trovato. Mostro tutti gli item di questa sorgente.`
       );
     }
-    piattiRisolti = [...piatti];
-  } else {
-    piattiRisolti = piatti.filter((p) => {
-      const catId = extractCatId(p.categoria);
-      if (catId === undefined) return false;
-      return filterMode === "include" ? targetIds.has(catId) : !targetIds.has(catId);
-    });
-  }
 
-  piattiRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      `[resolveMenuSection] "${sezione.label}" → piatti: ${piattiRisolti.length}/${piatti.length}`
+    // Applica il filtro e converti in MenuItem
+    const filtered = applyFilter(
+      entry.raw as Array<{ categoria?: unknown }>,
+      targetIds,
+      filterMode
     );
+
+    const converted = filtered.map((item) => entry.convert(item as never));
+    allItems.push(...converted);
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        `[resolveMenuSection] "${sezione.label}" | source="${source}" | filterMode=${filterMode} ` +
+        `| targetIds=[${[...targetIds].join(",")}] → ${converted.length}/${entry.raw.length}`
+      );
+    }
   }
 
-  return { items: piattiRisolti.map(piattoToItem), menuFissi: [] };
+  allItems.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+
+  return { items: allItems, menuFissi: [] };
 }
 
 /**

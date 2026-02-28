@@ -27,12 +27,14 @@ Il sito usa un routing a due livelli:
 
 ```
 /                    → Home Indice (lista sezioni cliccabili)
-/menu/[slug]         → Dettaglio sezione virtuale (lista piatti/vini)
+/menu/[slug]         → Dettaglio sezione virtuale (lista voci: piatti, vini, bevande…)
 
 Esempi:
   /menu/il-menu-alla-carta
   /menu/i-menu-pranzo
   /menu/i-nostri-vini
+  /menu/bevande
+  /menu/i-nostri-distillati
 ```
 
 **Il routing è guidato da `menu-config.standardItems`, non dalla tassonomia del DB.**
@@ -61,9 +63,28 @@ export async function generateStaticParams() {
 
 Tutte le pagine sono pre-renderizzate a build-time (SSG).
 
+## Tipo unione `MenuItem` — astrazione centrale
+
+Tutte le voci del menu (piatti, vini, bevande, birre, liquori) vengono normalizzate in un unico tipo discriminato a build-time da `api.ts`:
+
+```typescript
+type MenuItem =
+  | (Piatto   & { _type: "piatto" })
+  | (Vino     & { _type: "vino" })
+  | (Bevanda  & { _type: "bevanda" })
+  | (Birra    & { _type: "birra" })
+  | (Liquore  & { _type: "liquore" });
+```
+
+Il campo `_type` **non esiste nel backend** — viene aggiunto dalle funzioni helper in `api.ts` (`piattoToItem`, `vinoToItem`, `bevandaToItem`, `birraToItem`, `liquoreToItem`).
+
+Questo permette a `MenuSection` e `DishCard` di gestire qualsiasi tipo di voce con un'unica interfaccia, usando il discriminante `_type` per logiche specifiche (badge dietetici solo per piatti, prezzo al calice solo per vini, ecc.).
+
+I **menu fissi** (pranzo, degustazione) hanno struttura diversa (`MenuFisso`) e vengono renderizzati separatamente in `CategoryPage`, non attraverso `DishCard`.
+
 ## Sezioni Virtuali — Query Builder
 
-`menu-config` non è una semplice lista di categorie: è un **costruttore di menu dinamico**. Ogni voce di `standardItems` definisce una "Sezione Virtuale" che può aggregare piatti da più categorie o filtrare in modo complesso.
+`menu-config` non è una semplice lista di categorie: è un **costruttore di menu dinamico**. Ogni voce di `standardItems` definisce una "Sezione Virtuale" che può aggregare voci da più collection o filtrare per categoria.
 
 ### Struttura reale del backend (verificata via API con `?depth=2`)
 
@@ -82,16 +103,32 @@ Tutte le pagine sono pre-renderizzate a build-time (SSG).
       ]
     },
     {
-      "id": "69a2a3910c0c6188e8683566",
+      "id": "...",
       "label": "I nostri vini",
       "filterMode": "all",
       "visibility": "always",
       "sourceCollection": ["vini"],
       "targetCategories": []
+    },
+    {
+      "id": "...",
+      "label": "Bevande",
+      "filterMode": "all",
+      "visibility": "always",
+      "sourceCollection": ["bevande", "birre"],
+      "targetCategories": []
+    },
+    {
+      "id": "...",
+      "label": "I menù pranzo",
+      "filterMode": "include",
+      "visibility": "lunch_only",
+      "sourceCollection": ["menu-fisso"],
+      "targetCategories": [
+        { "relationTo": "categoria-menu-fisso", "value": { "id": 9, "nome": "Business lunch" } }
+      ]
     }
-  ],
-  "isActive": false,
-  "activeRange": { "start": null, "end": null }
+  ]
 }
 ```
 
@@ -102,7 +139,7 @@ Tutte le pagine sono pre-renderizzate a build-time (SSG).
 | `label` | `string` | Titolo visualizzato (non `titolo`) |
 | `slug` | — | **Non esiste nel backend** — generato da `slugify(label)` a build-time |
 | `visibility` | `"always"` \| `"lunch_only"` \| `"dinner_only"` | Valori reali del backend (non `"lunch"`/`"dinner"`) |
-| `sourceCollection` | `string[]` | Array (es. `["piatti"]`, `["bevande","birre"]`) |
+| `sourceCollection` | `string[]` | Array (es. `["piatti"]`, `["bevande","birre"]`, `["piatti","vini"]`) |
 | `filterMode` | `"all"` \| `"include"` \| `"exclude"` | Logica di filtro categorie |
 | `targetCategories` | `{ relationTo, value: { id, nome } }[]` | Struttura polimorphic di Payload |
 
@@ -116,22 +153,46 @@ Tutte le pagine sono pre-renderizzate a build-time (SSG).
 
 ### Collection supportate dal frontend
 
-| sourceCollection | Stato |
-|---|---|
-| `"piatti"` | ✅ Implementato |
-| `"vini"` | ✅ Implementato (lista vini) |
-| `"menu-fisso"` | ⚠️ Riconosciuto, non ancora implementato — sezione vuota |
-| `"bevande"`, `"birre"`, `"liquori"` | ⚠️ Riconosciuto, non ancora implementato — sezione vuota |
+| sourceCollection | Tipo TS risultante | Stato |
+|---|---|---|
+| `"piatti"` | `Piatto & { _type: "piatto" }` | ✅ Implementato |
+| `"vini"` | `Vino & { _type: "vino" }` | ✅ Implementato |
+| `"bevande"` | `Bevanda & { _type: "bevanda" }` | ✅ Implementato |
+| `"birre"` | `Birra & { _type: "birra" }` | ✅ Implementato |
+| `"liquori"` | `Liquore & { _type: "liquore" }` | ✅ Implementato |
+| `"menu-fisso"` | `MenuFisso` (array separato) | ✅ Implementato |
+
+### Logica Multi-Source Additiva
+
+`resolveMenuSection` usa un approccio **additivo**: itera su **ogni** sorgente in `sourceCollection` in modo indipendente, applica il filtro corretto, poi unisce i risultati in `allItems`.
+
+```
+per ogni source in sourceCollection:
+  1. Recupera l'array grezzo corrispondente (piatti, vini, bevande, ecc.)
+  2. Estrae i targetIds pertinenti a questa sorgente
+     (filtrando targetCategories per relationTo, es. "categoria-piatti")
+  3. Applica filterMode (include/exclude/all) usando quei targetIds
+  4. Converte gli item filtrati in MenuItem (aggiunge _type)
+  5. Aggiunge a allItems
+
+→ allItems ordinato per campo `ordine` globale
+```
+
+Questo permette combinazioni arbitrarie come `["piatti", "vini"]` con `filterMode: "include"` e `targetCategories` misti: i piatti vengono filtrati per `categoria-piatti` e i vini per `categoria-vini`, producendo un unico array ordinato.
+
+**Caso speciale — `menu-fisso`:** gestito separatamente perché `MenuFisso` ha una struttura dati diversa da `MenuItem` e viene reso in un layout dedicato. Se `sources` include `"menu-fisso"`, la funzione ritorna subito con `{ items: [], menuFissi: [...] }`.
+
+**Scalabilità:** aggiungere una nuova collection richiede solo una voce nel `sourceMap` interno a `resolveMenuSection`. Non è necessario modificare la struttura del loop.
 
 ### Risoluzione a build-time
 
-`getStaticMenuData()` chiama `resolveAllSezioni()` che applica il Query Builder su ogni sezione e produce `StaticMenuData.sezioniRisolte`: un array di `SezioneRisolta[]` con i piatti già filtrati, pronto per il rendering.
+`getStaticMenuData()` chiama `resolveAllSezioni()` che applica il Query Builder su ogni sezione e produce `StaticMenuData.sezioniRisolte`:
 
 ```
 menu-config.standardItems
   → normalizeStandardItems()   (aggiunge slug, normalizza tipi)
-  → resolveMenuSection()       (applica filterMode + targetCategories)
-  → SezioneRisolta[]           (slug, titolo, piatti[], vini[])
+  → resolveMenuSection()       (logica multi-source additiva per ogni sorgente)
+  → SezioneRisolta[]           (slug, titolo, items: MenuItem[], menuFissi: MenuFisso[])
 ```
 
 La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
@@ -147,19 +208,24 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 │    └─ <HomeIndex staticData={...} />  → index.html              │
 │                                                                 │
 │  app/menu/[slug]/page.tsx (Server Component × N sezioni)        │
-│    └─ generateStaticParams() → slug da standardItems            │
+│    └─ generateStaticParams() → slug da sezioniRisolte           │
 │    └─ getStaticMenuData() → cerca sezione in sezioniRisolte     │
 │    └─ <CategoryPage staticData sezione /> → HTML                │
 │                                                                 │
 │  getStaticMenuData() chiama (in parallelo):                     │
 │    ├─ /api/piatti?where[inLista]=true                           │
 │    ├─ /api/vini?where[inLista]=true                             │
+│    ├─ /api/menu-fisso?where[inLista]=true&depth=2               │
+│    ├─ /api/bevande?where[inLista]=true&depth=1                  │
+│    ├─ /api/birre?where[inLista]=true&depth=1                    │
+│    ├─ /api/liquori?where[inLista]=true&depth=1                  │
 │    ├─ /api/allergeni                                            │
 │    ├─ /api/globals/menu-config?depth=2  (fallback se vuoto)     │
 │    └─ /api/globals/generali?depth=2    (fallback se vuoto)      │
 │    Categorie estratte dai piatti (nessun endpoint dedicato)     │
 │    normalizeStandardItems() → aggiunge slug da label            │
 │    resolveAllSezioni() → sezioniRisolte[] (Query Builder)       │
+│      └─ ogni sezione: { items: MenuItem[], menuFissi: MenuFisso[] }
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼  Firebase Hosting (CDN)
@@ -177,7 +243,8 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 │                   └─ Google Cloud Storage (disponibilita.json)  │
 │                                                                 │
 │  Home: mostra sezioni come card → Link href="/menu/[slug]"      │
-│  Dettaglio: mostra piatti della sezione con DishCard            │
+│  Dettaglio: mostra items della sezione con DishCard             │
+│             mostra menuFissi con layout dedicato                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -186,13 +253,13 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 | Componente | File | Tipo | Responsabilità |
 |---|---|---|---|
 | `app/page.tsx` | `app/page.tsx` | Server Component | Fetch build-time, passa `staticData` a `HomeIndex` |
-| `app/menu/[slug]/page.tsx` | `app/menu/[slug]/page.tsx` | Server Component | `generateStaticParams` da `standardItems`, cerca sezione in `sezioniRisolte` |
+| `app/menu/[slug]/page.tsx` | `app/menu/[slug]/page.tsx` | Server Component | `generateStaticParams` da `sezioniRisolte`, cerca sezione per slug |
 | `HomeIndex` | `src/components/menu/HomeIndex.tsx` | Client Component | Indice sezioni virtuali: card cliccabili filtrate per slot/orario |
-| `CategoryPage` | `src/components/menu/CategoryPage.tsx` | Client Component | Lista piatti di una sezione virtuale con disponibilità real-time |
+| `CategoryPage` | `src/components/menu/CategoryPage.tsx` | Client Component | Lista voci di una sezione virtuale con disponibilità real-time |
 | `MenuProvider` | `src/context/MenuContext.tsx` | Context Provider | Stato globale: sezioni, disponibilità, status |
 | `MenuHeader` | `src/components/menu/MenuHeader.tsx` | Client Component | Nome ristorante, orari settimanali, slot attivo, banner chiusura |
-| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, renderizza `DishCard` |
-| `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Singolo piatto con badge dietetici e allergeni |
+| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, renderizza `DishCard` per ogni `MenuItem` |
+| `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Singola voce menu (`MenuItem`): nome, prezzo, badge dietetici/tipologia/allergeni |
 | `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright |
 
 ## Struttura dei dati backend (PayloadCMS)
@@ -205,6 +272,10 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 |---|---|---|
 | `/api/piatti` | `Piatto` | `id` numerico, campi booleani dietetici, categoria embedded |
 | `/api/vini` | `Vino` | `id` numerico, `tipologia` embedded, `prezzoCalice` separato |
+| `/api/menu-fisso` | `MenuFisso` | `id` numerico, `categoria` embedded, array `piatti` e `servizi` |
+| `/api/bevande` | `Bevanda` | `id` numerico, `tipologia` embedded |
+| `/api/birre` | `Birra` | `id` numerico, `tipologia` embedded, `grado`, `capacita` |
+| `/api/liquori` | `Liquore` | `id` numerico, `tipologia` embedded, `grado`, `capacita`, `invecchiamento` |
 | `/api/allergeni` | `Allergene` | `id` numerico, `nome`, `descrizione` |
 
 ### Collection senza endpoint proprio
@@ -213,6 +284,8 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 |---|---|
 | `CategoriaMenu` | Estratta dai piatti a build-time (`piatto.categoria` è embedded) |
 | `TipologiaVino` | Embedded in ogni vino (`vino.tipologia`) |
+| `TipologiaBevanda` | Embedded in bevande, birre e liquori (`item.tipologia`) |
+| `CategoriaMenuFisso` | Embedded in ogni menu fisso (`menuFisso.categoria`) |
 
 ### Globals (struttura reale verificata)
 
@@ -288,7 +361,7 @@ Il file `disponibilita.json` su GCS contiene la mappa degli stati dei piatti:
 ```
 
 - La chiave è l'id numerico del piatto (come stringa).
-- `MenuSection` controlla `availability.piatti[piatto.id]` prima di renderizzare ogni piatto.
+- `MenuSection` controlla `availability.piatti[item.id]` **solo per `item._type === "piatto"`**. Vini, bevande e liquori non hanno logica di disponibilità.
 - Se `availability` è `null` (GCS irraggiungibile) → tutto viene mostrato come disponibile.
 - Se un piatto non ha entry nella mappa → considerato disponibile.
 
@@ -300,3 +373,4 @@ Il file `disponibilita.json` su GCS contiene la mappa degli stati dei piatti:
 - `targetCategories` usa la struttura polimorphic di Payload: `{ relationTo: string, value: { id, nome } }`.
 - Importa sempre i tipi da `@/types` (alias configurato in `tsconfig.json` → `./src/*`).
 - Le funzioni pure degli hook (`computeTimekeeperState`, `computeMenuStructure`) sono esportate separatamente per facilitare i test unitari.
+- **Non passare `Piatto` grezzo a `DishCard` o `MenuSection`** — usa sempre `MenuItem` con `_type` aggiunto. Nella pagina `design-system`, usa `.map((p) => ({ ...p, _type: "piatto" as const }))` per convertire i dati dummy.
