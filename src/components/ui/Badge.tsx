@@ -2,16 +2,18 @@
  * Badge — Atomo UI per etichette e tag
  *
  * Varianti:
- * - default:   sfondo Blu Notte, testo Crema. Per tag generici (es. "Vegano").
- * - highlight: sfondo Arancione Bruciato, testo Crema. Per badge prominenti
- *              (es. "Chef consiglia", "Nuovo").
+ * - default:   sfondo Blu Notte, testo Crema. Per tag generici.
+ * - highlight: sfondo Arancione Bruciato, testo Crema. Per tag positivi
+ *              (es. "Vegan", "Gluten Free", "Chef consiglia").
  * - gold:      sfondo Oro, testo Blu Notte. Per badge premium (es. "Signature").
- * - outline:   bordo Blu Notte, testo Blu Notte. Per tag discreti.
+ * - outline:   bordo Blu Notte, testo Blu Notte. Per tag discreti generici.
+ * - allergen:  bordo Bordeaux sottile, testo Bordeaux. Per avvisi allergeni.
+ *              Uso: un badge per allergene (es. "Contiene glutine").
  */
 
 import type { HTMLAttributes } from "react";
 
-type BadgeVariant = "default" | "highlight" | "gold" | "outline";
+type BadgeVariant = "default" | "highlight" | "gold" | "outline" | "allergen";
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
@@ -22,6 +24,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   highlight: "bg-accent-orange text-text-light",
   gold: "bg-accent-gold text-text-main",
   outline: "border border-text-main text-text-main bg-transparent",
+  allergen: "border border-surface-dark/40 text-surface-dark bg-transparent",
 };
 
 export function Badge({

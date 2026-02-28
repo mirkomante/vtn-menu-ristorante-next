@@ -7,7 +7,7 @@
  */
 
 import { getStaticMenuData } from "@/lib/api";
-import { MenuOrchestrator } from "@/components/menu/MenuOrchestrator";
+import { MenuOrchestrator } from "@/components/menu";
 
 export default async function HomePage() {
   let staticData;

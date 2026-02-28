@@ -68,6 +68,8 @@ export interface MenuContextValue {
   refreshAvailability: () => Promise<void>;
   /** Configurazione del menu (per accesso diretto a mostraVini, mostraAllergeni, ecc.) */
   menuConfig: MenuConfig;
+  /** Dati generali del ristorante (orari, eccezioni) */
+  generali: Generali;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +159,7 @@ export function MenuProvider({
       setActiveCategory,
       refreshAvailability: fetchAvailability,
       menuConfig,
+      generali,
     }),
     [
       sections,
@@ -169,6 +172,7 @@ export function MenuProvider({
       setActiveCategory,
       fetchAvailability,
       menuConfig,
+      generali,
     ]
   );
 

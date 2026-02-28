@@ -28,7 +28,7 @@ export interface MenuOrchestratorProps {
   staticData: StaticMenuData;
 }
 
-// Mappa slug → CategoriaMenu per lookup O(1) in MenuContent
+/** Mappa slug → CategoriaMenu per lookup O(1) in MenuContent */
 type CategorieMap = Map<string, CategoriaMenu>;
 
 // ---------------------------------------------------------------------------
@@ -36,7 +36,7 @@ type CategorieMap = Map<string, CategoriaMenu>;
 // ---------------------------------------------------------------------------
 
 function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
-  const { sections, availability, status, activeCategory, setActiveCategory, menuConfig } =
+  const { sections, availability, status, activeCategory, setActiveCategory, menuConfig, generali } =
     useMenu();
 
   // Categorie attive nell'ordine delle sezioni risolte (per StickyNav)
@@ -53,7 +53,7 @@ function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
 
   return (
     <>
-      <MenuHeader menuConfig={menuConfig} status={status} />
+      <MenuHeader menuConfig={menuConfig} generali={generali} status={status} />
 
       {categorieAttive.length > 0 && (
         <StickyNav

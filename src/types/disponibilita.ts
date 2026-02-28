@@ -13,8 +13,8 @@
 export type StatoDisponibilita = "disponibile" | "esaurito" | "nascosto";
 
 export interface DisponibilitaItem {
-  /** ID del documento Payload corrispondente */
-  id: string;
+  /** ID del documento Payload corrispondente (numerico come stringa o numero) */
+  id: string | number;
   stato: StatoDisponibilita;
   /** Nota opzionale visibile al cliente (es. "Disponibile solo a pranzo") */
   nota?: string;

@@ -1,12 +1,13 @@
 /**
  * MenuSection — Componente di dominio per una sezione del menu.
  *
- * Raggruppa i piatti di una categoria con titolo, descrizione opzionale
- * e lista DishCard in stile Minimal.
+ * Raggruppa i piatti di una categoria con titolo e lista DishCard.
+ * Nessun bordo o sfondo esterno: layout completamente aperto sul crema.
  *
- * Logica: se la lista piatti è vuota, non renderizza nulla.
- * L'id dell'elemento corrisponde allo slug della categoria per il deep-link
- * dalla StickyNav (es. <section id="antipasti">).
+ * Logica disponibilità:
+ * - Piatti "esaurito" → rimossi dalla lista (invisibili).
+ * - Piatti "nascosto"  → rimossi dalla lista (invisibili).
+ * - Se dopo il filtro non rimane nessun piatto → restituisce null.
  */
 
 import { Container, Heading, Text } from "@/components/ui";
@@ -36,8 +37,18 @@ export function MenuSection({
   availability = null,
   className = "",
 }: MenuSectionProps) {
-  // Sezione vuota → non renderizzare
-  if (piatti.length === 0) return null;
+  // Filtra i piatti: esaurito e nascosto → invisibili
+  // La chiave nella mappa può essere id numerico o stringa
+  const piattiVisibili = piatti.filter((piatto) => {
+    const item =
+      availability?.piatti[piatto.id] ??
+      availability?.piatti[String(piatto.id)];
+    if (!item) return true; // nessuna info → disponibile
+    return item.stato === "disponibile";
+  });
+
+  // Sezione senza piatti visibili → non renderizzare
+  if (piattiVisibili.length === 0) return null;
 
   return (
     <section
@@ -52,7 +63,6 @@ export function MenuSection({
             level={2}
             id={`section-title-${categoria.slug}`}
             color="bordeaux"
-            className="relative inline-block pb-2 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-accent-orange/40 after:content-['']"
           >
             {categoria.nome}
           </Heading>
@@ -64,25 +74,11 @@ export function MenuSection({
           )}
         </div>
 
-        {/* Lista piatti */}
+        {/* Lista piatti visibili */}
         <div className="flex flex-col">
-          {piatti.map((piatto) => {
-            const disponibilitaItem = availability?.piatti[piatto.id];
-            const isAvailable =
-              disponibilitaItem == null ||
-              disponibilitaItem.stato === "disponibile";
-
-            // I piatti con stato "nascosto" non vengono renderizzati
-            if (disponibilitaItem?.stato === "nascosto") return null;
-
-            return (
-              <DishCard
-                key={piatto.id}
-                piatto={piatto}
-                isAvailable={isAvailable}
-              />
-            );
-          })}
+          {piattiVisibili.map((piatto) => (
+            <DishCard key={piatto.id} piatto={piatto} />
+          ))}
         </div>
       </Container>
     </section>

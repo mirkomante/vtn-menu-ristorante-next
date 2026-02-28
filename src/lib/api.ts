@@ -1,8 +1,14 @@
 /**
  * Client API per il fetching dei dati dal backend PayloadCMS e da GCS.
  *
- * - getStaticMenuData(): usata a build-time (Server Components / generateStaticParams)
+ * - getStaticMenuData(): usata a build-time (Server Components)
  * - getRealTimeAvailability(): usata lato client per aggiornamenti in tempo reale
+ *
+ * NOTA STRUTTURA BACKEND (verificata via API):
+ * - Le categorie NON hanno un endpoint REST proprio: vengono estratte dai piatti.
+ * - I globals (menu-config, generali) possono dare 500 se non ancora configurati
+ *   nel CMS — in quel caso si usano valori di fallback per non bloccare la build.
+ * - Gli id sono numerici (non stringhe UUID).
  */
 
 import type {
@@ -24,7 +30,6 @@ import type { DisponibilitaResponse } from "@/types/disponibilita";
 const PAYLOAD_URL = process.env.NEXT_PUBLIC_PAYLOAD_URL ?? "";
 const MENU_JSON_URL = process.env.NEXT_PUBLIC_MENU_JSON_URL ?? "";
 
-/** Numero massimo di documenti per singola richiesta a Payload */
 const PAYLOAD_LIMIT = 100;
 
 // ---------------------------------------------------------------------------
@@ -33,7 +38,6 @@ const PAYLOAD_LIMIT = 100;
 
 /**
  * Recupera tutti i documenti di una collection Payload gestendo la paginazione.
- * Lancia un errore se la risposta HTTP non è 2xx.
  */
 async function fetchAllDocs<T>(
   collection: string,
@@ -53,8 +57,6 @@ async function fetchAllDocs<T>(
     const url = `${PAYLOAD_URL}/api/${collection}?${query.toString()}`;
 
     const res = await fetch(url, {
-      // Con output: 'export' questo header è ignorato a runtime,
-      // ma è utile per un eventuale switch a ISR/SSR in futuro.
       next: { revalidate: 3600 },
     });
 
@@ -75,23 +77,104 @@ async function fetchAllDocs<T>(
 
 /**
  * Recupera un Global di Payload.
- * Lancia un errore se la risposta HTTP non è 2xx.
+ * Restituisce null se il global non è configurato (500) o non trovato (404),
+ * invece di lanciare un'eccezione — permette di usare valori di fallback.
  */
-async function fetchGlobal<T>(globalSlug: string): Promise<T> {
+async function fetchGlobalSafe<T>(globalSlug: string): Promise<T | null> {
   const url = `${PAYLOAD_URL}/api/globals/${globalSlug}`;
 
-  const res = await fetch(url, {
-    next: { revalidate: 3600 },
-  });
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
+    });
 
-  if (!res.ok) {
-    throw new Error(
-      `Payload Global error [${globalSlug}]: ${res.status} ${res.statusText}`
-    );
+    if (!res.ok) {
+      console.warn(
+        `[api] Global "${globalSlug}" non disponibile (${res.status}). Uso fallback.`
+      );
+      return null;
+    }
+
+    return res.json() as Promise<T>;
+  } catch (err) {
+    console.warn(`[api] Errore nel fetch del global "${globalSlug}":`, err);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers: estrazione categorie dai piatti
+// ---------------------------------------------------------------------------
+
+/**
+ * Genera uno slug URL-safe da un nome (es. "Specialità carne" → "specialita-carne").
+ */
+function slugify(nome: string): string {
+  return nome
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // rimuove diacritici
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+/**
+ * Estrae le categorie uniche dai piatti (dato che non esiste un endpoint dedicato).
+ * Mantiene l'ordine di prima comparsa e genera uno slug per ogni categoria.
+ */
+function extractCategorie(piatti: Piatto[]): CategoriaMenu[] {
+  const seen = new Map<number, CategoriaMenu>();
+
+  for (const piatto of piatti) {
+    const cat = piatto.categoria;
+    if (typeof cat === "object" && cat !== null && !seen.has(cat.id)) {
+      seen.set(cat.id, {
+        ...cat,
+        slug: slugify(cat.nome),
+        attiva: true,
+      });
+    }
   }
 
-  return res.json() as Promise<T>;
+  return Array.from(seen.values());
 }
+
+// ---------------------------------------------------------------------------
+// Fallback per globals non configurati
+// ---------------------------------------------------------------------------
+
+/**
+ * MenuConfig di fallback: mostra il menu senza configurazione CMS.
+ * Usato quando il global "menu-config" non è ancora stato configurato.
+ */
+const FALLBACK_MENU_CONFIG: MenuConfig = {
+  id: "fallback",
+  nomeRistorante: "Vietnamonamour",
+  mostraVini: true,
+  mostraAllergeni: true,
+  sezioni: [],
+  updatedAt: new Date().toISOString(),
+};
+
+/**
+ * Generali di fallback: ristorante sempre aperto, nessun orario configurato.
+ * Usato quando il global "generali" non è ancora stato configurato.
+ */
+const FALLBACK_GENERALI: Generali = {
+  id: "fallback",
+  orari: [
+    { giorno: "lunedi", aperto: false },
+    { giorno: "martedi", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+    { giorno: "mercoledi", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+    { giorno: "giovedi", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+    { giorno: "venerdi", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+    { giorno: "sabato", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+    { giorno: "domenica", aperto: true, fasce: [{ apertura: "12:00", chiusura: "15:00" }, { apertura: "19:00", chiusura: "23:00" }] },
+  ],
+  eccezioni: [],
+  updatedAt: new Date().toISOString(),
+};
 
 // ---------------------------------------------------------------------------
 // API pubblica — Build-time
@@ -100,11 +183,13 @@ async function fetchGlobal<T>(globalSlug: string): Promise<T> {
 /**
  * Recupera tutti i dati necessari per la build statica del menu.
  *
- * Esegue le richieste in parallelo dove possibile per minimizzare i tempi.
- * In caso di errore su una singola risorsa, l'intera funzione lancia un'eccezione
- * così la build fallisce in modo esplicito piuttosto che produrre dati parziali.
+ * Strategia di resilienza:
+ * - Piatti, vini, allergeni: obbligatori — se falliscono, la build fallisce.
+ * - Categorie: estratte dai piatti (nessuna chiamata API separata).
+ * - menu-config, generali: opzionali — se non configurati nel CMS, si usano
+ *   valori di fallback per non bloccare la build.
  *
- * @throws {Error} se una qualsiasi richiesta al backend fallisce
+ * @throws {Error} se le collection principali (piatti, vini, allergeni) non sono raggiungibili
  */
 export async function getStaticMenuData(): Promise<StaticMenuData> {
   if (!PAYLOAD_URL) {
@@ -113,19 +198,33 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     );
   }
 
-  // Recupera collections e globals in parallelo
-  const [piatti, vini, categorie, allergeni, menuConfig, generali] =
+  // Fetch parallelo: collections obbligatorie + globals opzionali
+  const [piatti, vini, allergeni, menuConfigRaw, generaliRaw] =
     await Promise.all([
-      fetchAllDocs<Piatto>("piatti", { where: '{"attivo":{"equals":true}}' }),
-      fetchAllDocs<Vino>("vini", { where: '{"attivo":{"equals":true}}' }),
-      fetchAllDocs<CategoriaMenu>("categorie-menu", {
-        where: '{"attiva":{"equals":true}}',
-        sort: "ordine",
-      }),
+      fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
+      fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}' }),
       fetchAllDocs<Allergene>("allergeni"),
-      fetchGlobal<MenuConfig>("menu-config"),
-      fetchGlobal<Generali>("generali"),
+      fetchGlobalSafe<MenuConfig>("menu-config"),
+      fetchGlobalSafe<Generali>("generali"),
     ]);
+
+  // Estrai categorie dai piatti (nessun endpoint dedicato nel backend)
+  const categorie = extractCategorie(piatti);
+
+  const menuConfig = menuConfigRaw ?? FALLBACK_MENU_CONFIG;
+  const generali = generaliRaw ?? FALLBACK_GENERALI;
+
+  // Se il MenuConfig non ha sezioni configurate, genera sezioni automatiche
+  // basate sulle categorie estratte dai piatti (una sezione per categoria)
+  if (!menuConfig.sezioni || menuConfig.sezioni.length === 0) {
+    menuConfig.sezioni = categorie.map((cat, index) => ({
+      titolo: cat.nome,
+      slug: cat.slug,
+      visibility: "always" as const,
+      categoria: cat.id,
+      ordine: index,
+    }));
+  }
 
   return { piatti, vini, categorie, allergeni, menuConfig, generali };
 }
@@ -136,9 +235,7 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
 
 /**
  * Recupera il file JSON di disponibilità da Google Cloud Storage.
- *
- * Pensata per essere chiamata lato client (useEffect / SWR / React Query).
- * GCS serve il file con gli header CORS corretti per il dominio del frontend.
+ * Pensata per essere chiamata lato client (useEffect / polling).
  *
  * @returns I dati di disponibilità, oppure null in caso di errore di rete.
  */
@@ -152,7 +249,6 @@ export async function getRealTimeAvailability(): Promise<DisponibilitaResponse |
 
   try {
     const res = await fetch(MENU_JSON_URL, {
-      // Nessuna cache: vogliamo sempre i dati più freschi
       cache: "no-store",
     });
 

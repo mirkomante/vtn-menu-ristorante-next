@@ -31,11 +31,13 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * Estrae l'ID da un campo che può essere un oggetto popolato o una stringa ID.
+ * Estrae l'ID da un campo che può essere un oggetto popolato o un id numerico.
+ * Restituisce sempre una stringa per uniformità nei confronti.
  */
-function resolveId(ref: { id: string } | string | undefined): string | null {
-  if (!ref) return null;
-  return typeof ref === "string" ? ref : ref.id;
+function resolveId(ref: { id: number | string } | number | string | undefined): string | null {
+  if (ref === null || ref === undefined) return null;
+  if (typeof ref === "number" || typeof ref === "string") return String(ref);
+  return String(ref.id);
 }
 
 /**
@@ -99,10 +101,10 @@ export function computeMenuStructure({
   const sezioni = menuConfig.sezioni ?? [];
   const todayStr = toLocalDateString(today);
 
-  // Indice rapido: categoriaId → piatti (evita O(n²) nel loop)
+  // Indice rapido: categoriaId (stringa) → piatti (evita O(n²) nel loop)
   const piattiByCategoria = new Map<string, Piatto[]>();
   for (const piatto of piatti) {
-    const catId = resolveId(piatto.categoria as CategoriaMenu | string);
+    const catId = resolveId(piatto.categoria);
     if (!catId) continue;
     const existing = piattiByCategoria.get(catId) ?? [];
     existing.push(piatto);
@@ -124,19 +126,19 @@ export function computeMenuStructure({
       // 2a. Modalità speciale: lista esplicita dal CMS
       for (const voce of sezione.specialItems) {
         if (voce.piatto) {
-          const id = resolveId(voce.piatto as Piatto | string);
-          const found = id ? piatti.find((p) => p.id === id) : null;
+          const id = resolveId(voce.piatto);
+          const found = id ? piatti.find((p) => String(p.id) === id) : null;
           if (found) piattiSezione.push(found);
         }
         if (voce.vino) {
-          const id = resolveId(voce.vino as Vino | string);
-          const found = id ? vini.find((v) => v.id === id) : null;
+          const id = resolveId(voce.vino);
+          const found = id ? vini.find((v) => String(v.id) === id) : null;
           if (found) viniSezione.push(found);
         }
       }
     } else if (sezione.categoria) {
       // 2b. Modalità standard: tutti i piatti della categoria
-      const catId = resolveId(sezione.categoria as CategoriaMenu | string);
+      const catId = resolveId(sezione.categoria);
       if (catId) {
         piattiSezione = piattiByCategoria.get(catId) ?? [];
       }

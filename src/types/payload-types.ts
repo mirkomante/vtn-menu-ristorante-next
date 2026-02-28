@@ -1,6 +1,13 @@
 /**
  * Tipi TypeScript che rispecchiano le collection e i global di PayloadCMS.
- * Aggiornare questi tipi se lo schema del backend cambia.
+ *
+ * STRUTTURA REALE DEL BACKEND (verificata via API):
+ * - Piatto: id numerico, campi booleani dietetici (glutenFree, noUovo, noLatticini, vegan),
+ *           categoria embedded nell'oggetto piatto (non collection separata)
+ * - Vino: id numerico, tipologia embedded, prezzoCalice separato
+ * - Allergene: id numerico, nome, descrizione
+ * - Categorie: non hanno endpoint proprio — estratte dai piatti a build-time
+ * - Globals menu-config / generali: esistono ma possono dare 500 se non configurati
  *
  * Backend: https://vtn-backend-payload-203473363873.europe-west1.run.app
  */
@@ -25,7 +32,7 @@ export interface PayloadListResponse<T> {
 
 /** Immagine caricata su Payload (collection "media") */
 export interface PayloadMedia {
-  id: string;
+  id: number;
   filename: string;
   mimeType: string;
   filesize: number;
@@ -37,22 +44,14 @@ export interface PayloadMedia {
   updatedAt: string;
 }
 
-/** Riferimento a un documento Payload (relazione non popolata) */
-export interface PayloadRef {
-  id: string;
-  relationTo: string;
-}
-
 // ---------------------------------------------------------------------------
 // Collection: Allergeni
 // ---------------------------------------------------------------------------
 
 export interface Allergene {
-  id: string;
+  id: number;
   nome: string;
-  /** Codice numerico EU (es. "1" = Glutine, "2" = Crostacei, …) */
-  codice?: string;
-  icona?: PayloadMedia | string;
+  descrizione?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,14 +60,18 @@ export interface Allergene {
 // Collection: Categorie Menu
 // ---------------------------------------------------------------------------
 
+/**
+ * Categoria del menu — embedded nel piatto, non ha endpoint REST proprio.
+ * Estratta a build-time dai piatti tramite getStaticMenuData().
+ */
 export interface CategoriaMenu {
-  id: string;
+  id: number;
   nome: string;
-  /** Slug URL-friendly generato da Payload */
+  /** Slug derivato dal nome (generato a build-time, non presente nel backend) */
   slug: string;
   descrizione?: string;
+  /** Ordine di visualizzazione (derivato dall'ordine di comparsa nei piatti) */
   ordine?: number;
-  /** Se true la categoria è visibile nel menu pubblico */
   attiva: boolean;
   createdAt: string;
   updatedAt: string;
@@ -78,26 +81,31 @@ export interface CategoriaMenu {
 // Collection: Piatti
 // ---------------------------------------------------------------------------
 
-export type TipoPiatto = "cibo" | "bevanda";
-
 export interface Piatto {
-  id: string;
+  id: number;
   nome: string;
+  /** Slug derivato dal nome (generato a build-time) */
   slug: string;
-  tipo: TipoPiatto;
   descrizione?: string;
   prezzo: number;
-  /** Prezzo alternativo (es. mezza porzione) */
+  /** Prezzo alternativo (es. mezza porzione) — non presente nel backend attuale */
   prezzoAlternativo?: number;
   etichettaPrezzoAlternativo?: string;
-  categoria: CategoriaMenu | string;
-  allergeni?: (Allergene | string)[];
-  immagine?: PayloadMedia | string;
-  /** Tag liberi (es. "vegano", "senza glutine", "chef consiglia") */
-  tag?: string[];
+  /** Categoria embedded (oggetto) o id numerico (non popolato) */
+  categoria: CategoriaMenu | number;
+  allergeni?: (Allergene | number)[];
+  immagine?: PayloadMedia | number;
   /** Ordine di visualizzazione all'interno della categoria */
   ordine?: number;
-  attivo: boolean;
+  /** Se true il piatto è visibile in lista */
+  inLista: boolean;
+  /** Se true il piatto appare solo nei menu fissi */
+  soloMenuFissi: boolean;
+  /** Campi dietetici booleani (struttura reale del backend) */
+  glutenFree: boolean;
+  noUovo: boolean;
+  noLatticini: boolean;
+  vegan: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -106,26 +114,32 @@ export interface Piatto {
 // Collection: Vini
 // ---------------------------------------------------------------------------
 
-export type TipoVino = "rosso" | "bianco" | "rosato" | "spumante" | "dessert";
-export type FormatoVino = "bottiglia" | "calice" | "mezza_bottiglia";
+/** Tipologia vino (embedded nel vino) */
+export interface TipologiaVino {
+  id: number;
+  nome: string;
+  descrizione?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Vino {
-  id: string;
+  id: number;
   nome: string;
+  /** Slug derivato dal nome (generato a build-time) */
   slug: string;
-  tipo: TipoVino;
-  produttore?: string;
-  annata?: number;
-  regione?: string;
   descrizione?: string;
-  abbinamenti?: string;
-  prezzi: {
-    formato: FormatoVino;
-    prezzo: number;
-  }[];
-  immagine?: PayloadMedia | string;
+  prezzo: number;
+  prezzoCalice?: number | null;
+  tipologia: TipologiaVino | number;
+  cantina?: string;
+  anno?: string;
+  capacita?: string;
+  grado?: string;
+  certificazione?: string;
+  /** Se true il vino è visibile in lista */
+  inLista: boolean;
   ordine?: number;
-  attivo: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,42 +156,26 @@ export type SlotVisibilita = "lunch" | "dinner" | "always";
 
 /**
  * Singola voce di un menu speciale (es. "Business Lunch").
- * Può essere un riferimento a un piatto o a un vino.
  */
 export interface VoceMenuSpeciale {
   id?: string;
-  piatto?: Piatto | string;
-  vino?: Vino | string;
-  /** Prezzo override per questo menu speciale */
+  piatto?: Piatto | number;
+  vino?: Vino | number;
   prezzoOverride?: number;
   nota?: string;
 }
 
 /**
  * Sezione del menu configurata nel CMS.
- * Ogni sezione raggruppa piatti per categoria o per lista esplicita.
  */
 export interface SezioneMenuConfig {
   id?: string;
   titolo: string;
   slug: string;
-  /** Visibilità in base allo slot di servizio */
   visibility: SlotVisibilita;
-  /**
-   * Se presente, la sezione mostra solo i piatti della categoria indicata
-   * (modalità standard: tutte le voci della categoria).
-   */
-  categoria?: CategoriaMenu | string;
-  /**
-   * Lista esplicita di piatti/vini da mostrare (es. menu degustazione).
-   * Ha precedenza su `categoria` se entrambi sono presenti.
-   */
+  /** ID numerico della categoria associata */
+  categoria?: CategoriaMenu | number;
   specialItems?: VoceMenuSpeciale[];
-  /**
-   * Intervallo di date in cui questa sezione usa `specialItems`
-   * al posto della lista standard derivata da `categoria`.
-   * Formato ISO: "YYYY-MM-DD".
-   */
   specialPeriod?: {
     dal: string;
     al: string;
@@ -185,23 +183,21 @@ export interface SezioneMenuConfig {
   ordine?: number;
 }
 
-/** Configurazione generale del menu (colori, testi, logo, ecc.) */
+/** Configurazione generale del menu */
 export interface MenuConfig {
   id: string;
   nomeRistorante: string;
-  logo?: PayloadMedia | string;
-  /** Colore primario in formato HEX */
+  logo?: PayloadMedia | number;
   colorePrimario?: string;
   coloreTesto?: string;
-  /** Testo del footer */
   testoFooter?: string;
-  /** Messaggio di benvenuto visualizzato in cima al menu */
   messaggioBenvenuto?: string;
-  /** Se true mostra la sezione vini */
+  indirizzo?: string;
+  telefono?: string;
+  instagram?: string;
+  facebook?: string;
   mostraVini: boolean;
-  /** Se true mostra gli allergeni per ogni piatto */
   mostraAllergeni: boolean;
-  /** Sezioni configurate nel CMS (ordinate per campo `ordine`) */
   sezioni?: SezioneMenuConfig[];
   updatedAt: string;
 }
@@ -220,8 +216,8 @@ export type GiornoSettimana =
   | "domenica";
 
 export interface FasciaOraria {
-  apertura: string; // formato "HH:mm"
-  chiusura: string; // formato "HH:mm"
+  apertura: string; // "HH:mm"
+  chiusura: string; // "HH:mm"
 }
 
 export interface OrarioGiorno {
@@ -232,9 +228,8 @@ export interface OrarioGiorno {
 
 export interface EccezioneOrario {
   id?: string;
-  data: string; // formato ISO "YYYY-MM-DD"
+  data: string; // "YYYY-MM-DD"
   chiuso: boolean;
-  /** Descrizione opzionale (es. "Chiuso per ferie") */
   descrizione?: string;
   fasce?: FasciaOraria[];
 }
@@ -243,7 +238,6 @@ export interface Generali {
   id: string;
   orari: OrarioGiorno[];
   eccezioni?: EccezioneOrario[];
-  /** Messaggio mostrato quando il ristorante è chiuso */
   messaggioChiusura?: string;
   updatedAt: string;
 }
@@ -255,6 +249,7 @@ export interface Generali {
 export interface StaticMenuData {
   piatti: Piatto[];
   vini: Vino[];
+  /** Categorie estratte dai piatti (non da endpoint dedicato) */
   categorie: CategoriaMenu[];
   allergeni: Allergene[];
   menuConfig: MenuConfig;
@@ -275,10 +270,7 @@ export type ActiveSlot = "lunch" | "dinner" | null;
 export interface SezioneRisolta {
   slug: string;
   titolo: string;
-  /** I piatti da mostrare in questa sezione (già filtrati e ordinati) */
   piatti: Piatto[];
-  /** I vini da mostrare in questa sezione (già filtrati e ordinati) */
   vini: Vino[];
-  /** true se la sezione usa la lista speciale anziché la categoria standard */
   isSpecialPeriod: boolean;
 }

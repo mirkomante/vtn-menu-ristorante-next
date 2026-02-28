@@ -581,33 +581,30 @@ export default function DesignSystemPage() {
 
         <Text variant="body" muted className="mb-8">
           Test con dati dummy che simulano la struttura reale di PayloadCMS.
-          Verifica DishCard (disponibile / esaurito) e MenuSection.
+          I piatti esauriti (es. Chả Giò) non vengono renderizzati.
         </Text>
 
-        {/* DishCard — singole */}
+        {/* DishCard — singole (solo piatti disponibili) */}
         <Heading level={3} className="mb-4">
-          DishCard — varianti
+          DishCard — singole
         </Heading>
 
         <div className="mb-10">
-          <DishCard piatto={DUMMY_PIATTI[0]} isAvailable={true} />
-          <DishCard piatto={DUMMY_PIATTI[1]} isAvailable={true} />
-          <DishCard piatto={DUMMY_PIATTI[2]} isAvailable={false} />
-          <DishCard piatto={DUMMY_PIATTI[3]} isAvailable={true} />
+          <DishCard piatto={DUMMY_PIATTI[0]} />
+          <DishCard piatto={DUMMY_PIATTI[1]} />
+          <DishCard piatto={DUMMY_PIATTI[3]} />
         </div>
 
-        {/* MenuSection completa */}
+        {/* MenuSection — layout aperto, nessun bordo esterno */}
         <Heading level={3} className="mb-4">
-          MenuSection — sezione completa
+          MenuSection — sezione completa (Chả Giò esaurito → nascosto)
         </Heading>
 
-        <div className="rounded-md border border-text-main/10 bg-background p-6">
-          <MenuSection
-            categoria={DUMMY_CATEGORIA}
-            piatti={DUMMY_PIATTI}
-            availability={DUMMY_AVAILABILITY}
-          />
-        </div>
+        <MenuSection
+          categoria={DUMMY_CATEGORIA}
+          piatti={DUMMY_PIATTI}
+          availability={DUMMY_AVAILABILITY}
+        />
 
         {/* Footer pagina */}
         <div className="mt-16 border-t border-text-main/10 py-8 text-center">

@@ -1,14 +1,17 @@
 /**
  * DishCard — Componente di dominio per un singolo piatto.
  *
- * Stile: Minimal su sfondo crema, separatore arancio inferiore.
- * Nessun sfondo card (bg-transparent): il testo poggia direttamente sul crema.
+ * Stile: Minimal B2 su sfondo crema.
+ * Separatore: border-b border-surface-dark/20 (Bordeaux 20%, 1px).
+ * Nessun sfondo card: il testo poggia direttamente sul crema.
  *
- * Gestisce:
- * - Piatti con prezzo singolo o prezzo alternativo (es. mezza porzione)
- * - Stato "esaurito" con opacità ridotta e badge
- * - Lista allergeni (testo discreto)
- * - Tag liberi (vegano, piccante, chef consiglia, ecc.)
+ * Assunzione: riceve solo piatti disponibili (il filtro è in MenuSection).
+ * Se per sicurezza riceve isAvailable=false, restituisce null.
+ *
+ * Struttura dati reale del backend:
+ * - Campi dietetici booleani: glutenFree, noUovo, noLatticini, vegan
+ * - Allergeni: array di oggetti Allergene o id numerici
+ * - Nessun campo tag[] — i tag vengono derivati dai booleani
  */
 
 import { Badge, Heading, Text } from "@/components/ui";
@@ -27,9 +30,22 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-/** Risolve il nome di un allergene che può essere oggetto o stringa ID */
-function getAllergeneNome(a: Allergene | string): string {
-  return typeof a === "string" ? a : a.nome;
+/** Risolve il nome di un allergene che può essere oggetto o id numerico */
+function getAllergeneNome(a: Allergene | number): string {
+  return typeof a === "number" ? `Allergene #${a}` : a.nome;
+}
+
+/**
+ * Deriva i badge dietetici dai campi booleani del piatto.
+ * Restituisce un array di etichette da mostrare come Badge `highlight`.
+ */
+function getDietaryTags(piatto: Piatto): string[] {
+  const tags: string[] = [];
+  if (piatto.vegan) tags.push("Vegan");
+  if (piatto.glutenFree) tags.push("Gluten Free");
+  if (piatto.noLatticini) tags.push("No Latticini");
+  if (piatto.noUovo) tags.push("No Uovo");
+  return tags;
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +54,10 @@ function getAllergeneNome(a: Allergene | string): string {
 
 export interface DishCardProps {
   piatto: Piatto;
-  /** Se false mostra il badge "Esaurito" e riduce l'opacità */
+  /**
+   * Fail-safe: se false il componente restituisce null.
+   * In produzione il filtro avviene in MenuSection prima di passare il piatto.
+   */
   isAvailable?: boolean;
   /** Classe CSS aggiuntiva per il wrapper esterno */
   className?: string;
@@ -53,6 +72,9 @@ export function DishCard({
   isAvailable = true,
   className = "",
 }: DishCardProps) {
+  // Fail-safe: se il padre non ha filtrato, nascondi silenziosamente
+  if (!isAvailable) return null;
+
   const {
     nome,
     descrizione,
@@ -60,17 +82,17 @@ export function DishCard({
     prezzoAlternativo,
     etichettaPrezzoAlternativo,
     allergeni,
-    tag,
   } = piatto;
 
-  // Tag speciali che diventano badge visibili
-  const tagBadges = tag?.filter(Boolean) ?? [];
+  const dietaryTags = getDietaryTags(piatto);
+  const allergeniList = (allergeni ?? []).filter(Boolean);
+  const hasFooter = dietaryTags.length > 0 || allergeniList.length > 0;
 
   return (
     <div
       className={[
-        "border-b-2 border-accent-orange/30 py-5",
-        !isAvailable ? "opacity-50" : "",
+        // Separatore B2: Bordeaux 20%, 1px
+        "border-b border-surface-dark/20 py-5",
         className,
       ]
         .filter(Boolean)
@@ -78,27 +100,15 @@ export function DishCard({
     >
       {/* Riga principale: nome + prezzo */}
       <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 flex-1 items-start gap-2">
+        <div className="flex min-w-0 flex-1">
           <Heading level={3} className="leading-snug">
             {nome}
           </Heading>
-          {!isAvailable && (
-            <Badge
-              variant="default"
-              className="mt-1 shrink-0 bg-surface-dark text-text-light"
-            >
-              Esaurito
-            </Badge>
-          )}
         </div>
 
         {/* Prezzi */}
         <div className="flex shrink-0 flex-col items-end gap-0.5">
-          <Text
-            variant="body"
-            as="span"
-            className="font-bold text-accent-gold"
-          >
+          <Text variant="body" as="span" className="font-bold text-accent-gold">
             {formatPrice(prezzo)}
           </Text>
           {prezzoAlternativo != null && (
@@ -117,26 +127,25 @@ export function DishCard({
         </Text>
       )}
 
-      {/* Footer: tag + allergeni */}
-      {(tagBadges.length > 0 || (allergeni && allergeni.length > 0)) && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {/* Tag come badge */}
-          {tagBadges.map((t) => (
-            <Badge
-              key={t}
-              variant={t === "chef consiglia" ? "highlight" : "default"}
-            >
-              {t}
+      {/* Footer: tag dietetici + allergeni */}
+      {hasFooter && (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          {/* Tag dietetici (da booleani) → highlight (arancio) */}
+          {dietaryTags.map((tag) => (
+            <Badge key={tag} variant="highlight">
+              {tag}
             </Badge>
           ))}
 
-          {/* Allergeni come testo discreto */}
-          {allergeni && allergeni.length > 0 && (
-            <Text variant="caption" muted as="span" className="font-medium">
-              Allergeni:{" "}
-              {allergeni.map((a) => getAllergeneNome(a)).join(", ")}
-            </Text>
-          )}
+          {/* Allergeni → allergen (bordo bordeaux sottile) */}
+          {allergeniList.map((a) => {
+            const nomeAllergene = getAllergeneNome(a as Allergene | number);
+            return (
+              <Badge key={nomeAllergene} variant="allergen">
+                {nomeAllergene}
+              </Badge>
+            );
+          })}
         </div>
       )}
     </div>

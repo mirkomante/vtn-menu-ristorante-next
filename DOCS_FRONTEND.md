@@ -181,7 +181,7 @@ Il brand **Vietnamonamour** usa un mood caldo ed elegante: sfondo crema, testi b
 |------------------|-----------------------|-------------------------|--------------------------------------------|
 | `background`     | `bg-background`       | `#FFEDD7`               | Sfondo pagina — **sempre questo, mai white** |
 | `surface`        | `bg-surface`          | `#FFFFFF`               | Solo per modal, form, elementi sovrapposti |
-| `surface-dark`   | `bg-surface-dark`     | `#460112`               | Footer, header scuro, sezioni bordeaux     |
+| `surface-dark`   | `bg-surface-dark`     | `#460112`               | Footer, header scuro, bordo allergeni, separatore B2 |
 | `text-main`      | `text-text-main`      | `#080F2C`               | Testo principale (blu notte profondo)      |
 | `text-light`     | `text-text-light`     | `#FFEDD7`               | Testo su sfondi scuri                      |
 | `text-muted`     | `text-text-muted`     | `rgba(8,15,44,0.7)`     | Descrizioni, note secondarie               |
@@ -230,11 +230,15 @@ import { Button, Heading, Text, Badge, Container } from "@/components/ui";
 **`<Badge>`**:
 
 ```tsx
-<Badge variant="default">Vegano</Badge>           // Blu Notte
-<Badge variant="highlight">Chef consiglia</Badge> // Arancione Bruciato
-<Badge variant="gold">Signature</Badge>           // Oro
-<Badge variant="outline">Contiene glutine</Badge> // Bordo
+<Badge variant="default">Piccante</Badge>           // Blu Notte — tag neutro
+<Badge variant="highlight">Vegan</Badge>            // Arancione — vantaggio dietetico
+<Badge variant="highlight">Chef consiglia</Badge>   // Arancione — tag promozionale
+<Badge variant="gold">Signature</Badge>             // Oro — badge premium
+<Badge variant="outline">Tag generico</Badge>       // Bordo blu notte
+<Badge variant="allergen">Contiene glutine</Badge>  // Bordo bordeaux — SOLO per allergeni
 ```
+
+> **Regola:** `allergen` è riservato agli avvisi allergeni. `highlight` per vantaggi dietetici e tag promozionali. Non mescolare i due ruoli.
 
 **`<Container>`**:
 
@@ -287,11 +291,25 @@ Renderizza un piatto secondo lo stile Minimal: nessun sfondo card, separatore in
 | `isAvailable` | `boolean` | `true` | Se `false`: `opacity-50` + badge "Esaurito" |
 | `className` | `string` | `""` | Classe CSS aggiuntiva |
 
+**Stile separatore:** `border-b border-surface-dark/20` — Bordeaux 20%, 1px (stile B2 approvato).
+
+**Assunzione:** `DishCard` riceve solo piatti già filtrati e disponibili. Il filtro avviene in `MenuSection`. Se per errore riceve `isAvailable=false`, restituisce `null` silenziosamente (fail-safe).
+
 **Funzionalità:**
 - **Prezzo alternativo:** se `piatto.prezzoAlternativo` è presente, viene mostrato sotto il prezzo principale con la sua etichetta (es. "2 pz €14,00").
-- **Tag:** array `piatto.tag[]` → badge. Il tag `"chef consiglia"` usa `variant="highlight"` (arancio), gli altri `variant="default"` (blu notte).
-- **Allergeni:** lista `piatto.allergeni[]` come testo `caption muted` discreto, separati da virgola. Gestisce sia oggetti `Allergene` popolati che stringhe ID.
-- **Stato esaurito:** `opacity-50` sull'intera card + badge "Esaurito" con sfondo `surface-dark`.
+- **Tag dietetici positivi** (`"vegan"`, `"gluten free"`, `"senza glutine"`, `"vegetariano"`, ecc.) → `<Badge variant="highlight">` (arancio). Vantaggio per il cliente.
+- **Tag promozionali** (`"chef consiglia"`) → `<Badge variant="highlight">` (arancio).
+- **Tag generici** (tutto il resto) → `<Badge variant="default">` (blu notte).
+- **Allergeni:** ogni allergene è un `<Badge variant="allergen">` separato — bordo bordeaux sottile, testo bordeaux. Gestisce sia oggetti `Allergene` popolati che stringhe ID.
+
+**Regola badge — Outline per avvisi, Solid per vantaggi:**
+
+| Tipo | Variante Badge | Colore | Logica |
+|---|---|---|---|
+| Allergene (avviso) | `allergen` | Bordo bordeaux | Uno per allergene, discreto |
+| Tag dietetico (vantaggio) | `highlight` | Arancio pieno | Risalta positivamente |
+| Tag promozionale | `highlight` | Arancio pieno | Attira l'attenzione |
+| Tag generico | `default` | Blu notte pieno | Informativo neutro |
 
 ```tsx
 import { DishCard } from "@/components/menu";
@@ -319,11 +337,11 @@ Raggruppa i piatti di una categoria con titolo decorato e lista `DishCard`.
 | `className` | `string` | `""` | Classe CSS aggiuntiva |
 
 **Funzionalità:**
-- Se `piatti.length === 0` → restituisce `null` (non renderizza nulla).
-- Genera `<section id={categoria.slug}>` per il deep-link dalla `StickyNav`.
+- Filtra `piatti` prima del render: solo i piatti con `stato === "disponibile"` (o senza entry in `availability`) vengono mostrati. **Piatto esaurito = piatto invisibile.**
+- Se dopo il filtro non rimane nessun piatto → restituisce `null` (l'intera sezione scompare).
+- Genera `<section id={categoria.slug}>` per il deep-link dalla `StickyNav`. **Nessun bordo, nessun box, nessun sfondo esterno** — layout completamente aperto sul crema.
 - `scroll-mt-16` compensa l'altezza della navbar sticky.
-- Titolo `h2` in bordeaux con linea decorativa arancio tramite pseudo-elemento `after:`.
-- Integra `availability`: piatti con stato `"nascosto"` vengono saltati; `"esaurito"` → `isAvailable={false}` a `DishCard`.
+- Titolo `h2` in bordeaux (Philosopher), senza sottolineatura — pulito e tipografico.
 
 ```tsx
 import { MenuSection } from "@/components/menu";
@@ -412,16 +430,29 @@ pnpm build (build-time)
        └─ <MenuOrchestrator staticData={...} />
 
 Browser (idratazione client)
-  └─ MenuOrchestrator → MenuProvider
+  └─ MenuOrchestrator → MenuProvider(menuConfig, generali, piatti, vini)
        ├─ useTimekeeper(generali)      → isOpen, activeSlot  [tick 30s]
        ├─ useMenuStructure(...)        → sections filtrate per slot
        └─ getRealTimeAvailability()    → availability         [polling 5min]
-  └─ MenuContent
-       ├─ MenuHeader   → nome + banner chiusura
-       ├─ StickyNav    → navigazione sticky
-       ├─ MenuSection × N → DishCard × M
-       └─ MenuFooter
+  └─ MenuContent (consuma useMenu())
+       ├─ MenuHeader   → nome, orari settimanali, slot attivo, banner chiusura
+       ├─ StickyNav    → navigazione sticky (IntersectionObserver)
+       ├─ MenuSection × N → DishCard × M  (piatti esauriti/nascosti filtrati)
+       └─ MenuFooter   → nome, testo CMS, indirizzo, telefono, social, copyright
 ```
+
+**Responsabilità dei componenti principali:**
+
+| Componente | Tipo | Responsabilità |
+|---|---|---|
+| `app/page.tsx` | Server Component | Fetch build-time, passa `staticData` al client |
+| `MenuOrchestrator` | Client Component | Inizializza `MenuProvider`, costruisce `CategorieMap` |
+| `MenuProvider` | Context Provider | Stato globale: sezioni, disponibilità, status, navigazione |
+| `MenuContent` | Client Component (interno) | Consuma context, orchestra il layout visivo |
+| `MenuHeader` | Client Component | Nome ristorante, orari, slot attivo, banner chiusura |
+| `StickyNav` | Client Component | Navigazione sticky con `IntersectionObserver` |
+| `MenuSection` | Server-compatible | Filtra piatti esauriti, renderizza `DishCard` |
+| `MenuFooter` | Client Component | Indirizzo, social, copyright |
 
 **Gestione errori e casi limite:**
 
@@ -431,7 +462,8 @@ Browser (idratazione client)
 | Ristorante chiuso | Banner discreto nell'header, menu consultabile |
 | Nessuna sezione per lo slot | Messaggio `EmptyMenu` centrato |
 | `availability` null (GCS irraggiungibile) | Tutto mostrato come disponibile (graceful degradation) |
-| Piatto con stato `"nascosto"` | Non renderizzato (rimosso silenziosamente dalla lista) |
+| Piatto con stato `"esaurito"` o `"nascosto"` | Non renderizzato — piatto invisibile |
+| Sezione con tutti i piatti esauriti | `MenuSection` restituisce `null` — sezione invisibile |
 
 ---
 
@@ -510,7 +542,8 @@ import { MenuProvider } from "@/context/MenuContext";
 | `activeCategory`    | `string\|null`              | Slug della sezione visualizzata (navigazione)       |
 | `setActiveCategory` | `(slug) => void`            | Cambia sezione visibile (routing logico)            |
 | `refreshAvailability` | `() => Promise<void>`     | Forza refresh immediato del JSON GCS                |
-| `menuConfig`        | `MenuConfig`                | Config grezza per accesso diretto                   |
+| `menuConfig`        | `MenuConfig`                | Config grezza (nome, testi, social, ecc.)           |
+| `generali`          | `Generali`                  | Orari settimanali ed eccezioni (per `MenuHeader`)   |
 
 **Polling disponibilità:** fetch immediato all'avvio + ogni 5 minuti. In caso di errore di rete, `availability` rimane al valore precedente (graceful degradation: tutto mostrato come disponibile).
 
@@ -530,19 +563,24 @@ import { MenuProvider } from "@/context/MenuContext";
 
 ### Design System — Regole di coerenza visiva
 
-> **Nota per agenti AI:** Quando crei nuovi componenti, usa **sempre** lo stile Minimal su sfondo Crema. Evita card bianche pesanti (`bg-surface` con `shadow`). Usa i bordi arancioni (`border-b-2 border-accent-orange/30`) per separare i contenuti. Le card bianche sono consentite solo per modal, form e overlay.
+> **Nota per agenti AI:** Quando crei nuovi componenti, usa **sempre** lo stile Minimal su sfondo Crema. Evita card bianche pesanti (`bg-surface` con `shadow`). Usa il bordo bordeaux (`border-b border-surface-dark/20`) per separare i contenuti. Le card bianche sono consentite solo per modal, form e overlay.
 
-**Stile di default per liste di contenuto (piatti, vini):**
+**Stile di default per liste di contenuto (piatti, vini) — Stile B2 approvato:**
 
 ```tsx
-// ✅ CORRETTO — Minimal su crema
-<div className="border-b-2 border-accent-orange/30 py-4">
+// ✅ CORRETTO — Minimal su crema, separatore bordeaux 20% (stile B2)
+<div className="border-b border-surface-dark/20 py-5">
   <Heading level={3}>Nome Piatto</Heading>
   <Text variant="body" muted>Descrizione</Text>
 </div>
 
 // ❌ EVITARE — Card bianca su crema (appesantisce la pagina)
 <div className="rounded-md bg-surface p-4 shadow-sm">
+  ...
+</div>
+
+// ❌ EVITARE — Bordo arancione 2px (stile B1, non approvato per produzione)
+<div className="border-b-2 border-accent-orange/30 py-4">
   ...
 </div>
 ```
@@ -556,7 +594,7 @@ import { MenuProvider } from "@/context/MenuContext";
 - Sfondo pagina: sempre `bg-background` (`#FFEDD7`). Non usare `bg-white` o `bg-gray-*`.
 - Testo principale: sempre `text-text-main`. Non usare `text-black` o `text-gray-900`.
 - Prezzi: sempre `text-accent-gold` con `font-semibold`.
-- Separatori tra piatti: `border-b-2 border-accent-orange/30`.
+- Separatori tra piatti: `border-b border-surface-dark/20` (stile B2 — Bordeaux 20%, 1px).
 - Sfondo scuro (footer, header): `bg-surface-dark` con `text-text-light`.
 - Su sfondo scuro: usa `text-text-light` (crema) o `text-accent-gold` (oro), **mai** `text-text-main`.
 
@@ -568,7 +606,7 @@ import { MenuProvider } from "@/context/MenuContext";
 | Titolo sezione menu      | `<Heading level={2}>`                                    |
 | Descrizione piatto       | `<Text variant="body" muted>`                            |
 | Prezzo                   | `<Text variant="body" className="text-accent-gold font-semibold">` |
-| Separatore tra piatti    | `border-b-2 border-accent-orange/30`                     |
+| Separatore tra piatti    | `border-b border-surface-dark/20` (stile B2)             |
 | Tag allergene/dieta      | `<Badge variant="outline">` o `variant="default"`        |
 | Badge prominente         | `<Badge variant="highlight">`                            |
 | Wrapper sezione          | `<Container as="section">`                               |
@@ -613,13 +651,18 @@ I componenti in `src/components/menu/` sono il punto di giunzione tra i dati di 
 | Descrizione | `DishCard` → `<Text muted>` | `piatto.descrizione` | `Piatto.descrizione?` |
 | Allergeni | `DishCard` → testo `caption` | `piatto.allergeni[]` | `(Allergene \| string)[]` |
 | Tag/Badge | `DishCard` → `<Badge>` | `piatto.tag[]` | `string[]` |
-| Stato esaurito | `DishCard` → `opacity-50` + badge | `availability.piatti[id].stato` | `StatoDisponibilita` |
+| Piatto esaurito/nascosto | `MenuSection` → non renderizzato | `availability.piatti[id].stato` | `StatoDisponibilita` |
 | Titolo sezione | `MenuSection` → `<Heading level={2} color="bordeaux">` | `categoria.nome` | `CategoriaMenu.nome` |
 | Descrizione sezione | `MenuSection` → `<Text muted>` | `categoria.descrizione` | `CategoriaMenu.descrizione?` |
 | Link navigazione | `StickyNav` → `<a href="#slug">` | `categoria.slug` | `CategoriaMenu.slug` |
 | Nome ristorante | `MenuHeader` | `menuConfig.nomeRistorante` | `MenuConfig.nomeRistorante` |
+| Orari apertura | `MenuHeader` | `generali.orari[]` | `OrarioGiorno[]` |
+| Slot attivo | `MenuHeader` | `status.activeSlot` | `ActiveSlot` |
 | Messaggio chiusura | `MenuHeader` | `generali.messaggioChiusura` | `Generali.messaggioChiusura?` |
 | Testo footer | `MenuFooter` | `menuConfig.testoFooter` | `MenuConfig.testoFooter?` |
+| Indirizzo | `MenuFooter` | `menuConfig.indirizzo` | `MenuConfig.indirizzo?` |
+| Telefono | `MenuFooter` | `menuConfig.telefono` | `MenuConfig.telefono?` |
+| Link social | `MenuFooter` | `menuConfig.instagram/facebook` | `MenuConfig.instagram?/facebook?` |
 
 **Regola per agenti:** quando crei un nuovo componente che mostra dati di un piatto, **importa sempre `DishCard`** invece di ricreare la struttura visiva. Se hai bisogno di varianti (es. card vino), crea `WineCard` seguendo lo stesso pattern di `DishCard` (stile Minimal, stesso separatore arancio).
 
