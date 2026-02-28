@@ -72,6 +72,13 @@ src/
 ├── lib/
 │   └── api.ts              # Funzioni di fetching (build-time e client-side)
 │
+├── hooks/
+│   ├── useTimekeeper.ts    # Logica temporale: apertura, slot, festività
+│   └── useMenuStructure.ts # Logica strutturale: sezioni risolte per slot corrente
+│
+├── context/
+│   └── MenuContext.tsx     # Provider globale: incapsula hooks + disponibilità
+│
 app/
 ├── layout.tsx              # Root layout (font, metadata globali)
 ├── page.tsx                # Homepage del menu
@@ -139,14 +146,123 @@ const disponibilita = await getRealTimeAvailability();
 
 ---
 
+## Logica Client-Side (Fase 2)
+
+### `useTimekeeper` — Il Tempo
+
+**File:** `src/hooks/useTimekeeper.ts`
+
+Aggiorna lo stato ogni 30 secondi leggendo `new Date()` dal browser. Accetta i dati `Generali` (orari settimanali + eccezioni) e restituisce:
+
+| Campo           | Tipo           | Descrizione                                          |
+|-----------------|----------------|------------------------------------------------------|
+| `now`           | `Date`         | Orario corrente del browser                          |
+| `isOpen`        | `boolean`      | Il ristorante è fisicamente aperto ora?              |
+| `activeSlot`    | `ActiveSlot`   | `'lunch'` / `'dinner'` / `null`                      |
+| `isHoliday`     | `boolean`      | Oggi è un giorno di eccezione nel calendario?        |
+| `closureMessage`| `string\|null` | Testo da mostrare quando chiuso                      |
+
+**Algoritmo di risoluzione:**
+
+1. Controlla se la data odierna (`YYYY-MM-DD` locale) corrisponde a un'`EccezioneOrario`.
+   - Se `chiuso: true` → restituisce `isOpen: false`, `isHoliday: true`.
+   - Se ha fasce speciali → usa quelle al posto degli orari settimanali.
+2. Se nessuna eccezione, cerca l'`OrarioGiorno` per il giorno della settimana corrente.
+   - Se `aperto: false` o non trovato → `isOpen: false`.
+3. Verifica se l'orario corrente (minuti dalla mezzanotte) cade in una `FasciaOraria`.
+   - Supporta fasce notturne che scavalcano la mezzanotte (es. 22:00–02:00).
+4. Determina lo slot: prima fascia del giorno = `'lunch'`, seconda = `'dinner'`. Se una sola fascia → sempre `'dinner'`.
+
+La funzione pura `computeTimekeeperState(now, generali)` è separata dall'hook per facilitare i test unitari.
+
+---
+
+### `useMenuStructure` — La Struttura
+
+**File:** `src/hooks/useMenuStructure.ts`
+
+Trasforma `MenuConfig.sezioni` (configurazione CMS) in `SezioneRisolta[]` (dati pronti per il rendering). Si ricalcola solo quando cambia `activeSlot`, `menuConfig`, `piatti` o `vini`.
+
+**Algoritmo per ogni sezione:**
+
+1. **Filtro visibilità:** se `visibility === 'lunch'` e `activeSlot !== 'lunch'`, la sezione è esclusa (e viceversa per `'dinner'`). `'always'` è sempre visibile.
+2. **Rilevamento periodo speciale:** confronta la data odierna con `specialPeriod.dal/al`.
+3. **Popolamento piatti:**
+   - Se nel periodo speciale e `specialItems` è definito → usa la lista esplicita (singoli piatti/vini referenziati).
+   - Altrimenti → filtra tutti i piatti per `categoria` (usando un indice `Map` per O(1) lookup).
+4. **Ordinamento:** piatti e vini ordinati per campo `ordine`; sezioni ordinate per `ordine` della config.
+
+La funzione pura `computeMenuStructure(input)` è separata dall'hook per i test.
+
+---
+
+### `MenuContext` / `MenuProvider` — Lo Stato Globale
+
+**File:** `src/context/MenuContext.tsx`
+
+Provider React che incapsula tutta la logica client-side. Va montato nel layout attorno alla parte di menu.
+
+```tsx
+// app/layout.tsx (o app/page.tsx)
+import { MenuProvider } from "@/context/MenuContext";
+
+<MenuProvider menuConfig={...} generali={...} piatti={...} vini={...}>
+  {children}
+</MenuProvider>
+```
+
+**Espone via `useMenu()`:**
+
+| Campo               | Tipo                        | Descrizione                                         |
+|---------------------|-----------------------------|-----------------------------------------------------|
+| `sections`          | `SezioneRisolta[]`          | Sezioni visibili per lo slot corrente               |
+| `availability`      | `DisponibilitaResponse\|null` | Mappa disponibilità da GCS (aggiornata ogni 5 min) |
+| `status`            | `MenuStatus`                | `{ isOpen, activeSlot, isHoliday, closureMessage }` |
+| `activeCategory`    | `string\|null`              | Slug della sezione visualizzata (navigazione)       |
+| `setActiveCategory` | `(slug) => void`            | Cambia sezione visibile (routing logico)            |
+| `refreshAvailability` | `() => Promise<void>`     | Forza refresh immediato del JSON GCS                |
+| `menuConfig`        | `MenuConfig`                | Config grezza per accesso diretto                   |
+
+**Polling disponibilità:** fetch immediato all'avvio + ogni 5 minuti. In caso di errore di rete, `availability` rimane al valore precedente (graceful degradation: tutto mostrato come disponibile).
+
+**Navigazione logica:** `activeCategory` è uno stato React. I componenti di navigazione chiamano `setActiveCategory(slug)` per cambiare la sezione visibile senza alcun cambio di URL o ricaricamento pagina.
+
+---
+
 ## Per Agenti AI
 
 ### Dove trovare le definizioni dei tipi
 
 - **Tutti i tipi** sono in `src/types/` e re-esportati da `src/types/index.ts`.
 - Importa sempre da `@/types` (alias configurato in `tsconfig.json`).
-- `payload-types.ts` → strutture dati del CMS (piatti, vini, config, orari).
+- `payload-types.ts` → strutture dati del CMS (piatti, vini, config, orari, sezioni).
 - `disponibilita.ts` → struttura del file JSON real-time su GCS.
+- Tipi derivati dagli hook (`ActiveSlot`, `SezioneRisolta`) sono in `payload-types.ts` nella sezione "Tipi derivati".
+
+### Logica di Business — Come il sistema decide cosa mostrare
+
+Il sistema usa tre livelli di decisione, eseguiti in sequenza ogni 30 secondi:
+
+```
+1. QUANDO siamo?          → useTimekeeper (src/hooks/useTimekeeper.ts)
+   └─ Orario browser + Generali → isOpen, activeSlot ('lunch'|'dinner'|null)
+
+2. COSA mostriamo?        → useMenuStructure (src/hooks/useMenuStructure.ts)
+   └─ MenuConfig.sezioni + activeSlot → filtra per visibility, risolve piatti
+
+3. COSA è disponibile?    → getRealTimeAvailability (src/lib/api.ts)
+   └─ disponibilita.json su GCS → mappa id→stato (polling ogni 5 min)
+```
+
+**Regola fondamentale:** se `activeSlot === null` (fuori orario), le sezioni con `visibility: 'lunch'` o `visibility: 'dinner'` vengono nascoste. Solo le sezioni `visibility: 'always'` rimangono visibili (es. carta bevande, carta vini).
+
+**Priorità dei dati per una sezione:**
+- Se oggi è nel `specialPeriod` di una sezione → usa `specialItems` (lista esplicita).
+- Altrimenti → usa tutti i piatti della `categoria` associata.
+
+**Graceful degradation:**
+- Se `getRealTimeAvailability()` fallisce → `availability === null` → il componente mostra tutto come disponibile.
+- Se `useTimekeeper` non trova l'orario per oggi → `isOpen: false` (fail-safe: meglio mostrare chiuso che dati errati).
 
 ### Come aggiungere una nuova collection
 
@@ -154,12 +270,17 @@ const disponibilita = await getRealTimeAvailability();
 2. Aggiungi il tipo all'interfaccia `StaticMenuData` se necessario.
 3. Aggiungi la chiamata `fetchAllDocs<NuovoTipo>("slug-collection")` in `getStaticMenuData()` dentro `Promise.all`.
 
+### Come aggiungere una nuova sezione al menu
+
+Le sezioni sono configurate nel CMS (Global `menu-config`, campo `sezioni`). Non richiedono modifiche al codice frontend, solo configurazione nel backend Payload. Il campo `visibility` controlla quando la sezione è visibile.
+
 ### Convenzioni di codice
 
 - TypeScript rigoroso: niente `any`, usa `unknown` se necessario.
-- `fetch` nativo, nessuna libreria HTTP esterna.
+- `fetch` nativo, nessuna libreria HTTP esterna (niente moment.js, date-fns, ecc.).
 - Server Components per tutto ciò che è statico; `"use client"` solo dove serve interattività.
-- Nomi file: `kebab-case.ts` per utility, `PascalCase.tsx` per componenti.
+- Nomi file: `kebab-case.ts` per utility/hooks, `PascalCase.tsx` per componenti e context.
+- Le funzioni pure (es. `computeTimekeeperState`, `computeMenuStructure`) sono esportate separatamente dall'hook per facilitare i test unitari.
 
 ### Flusso di deploy
 

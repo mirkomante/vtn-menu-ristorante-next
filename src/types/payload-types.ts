@@ -131,8 +131,59 @@ export interface Vino {
 }
 
 // ---------------------------------------------------------------------------
-// Global: MenuConfig
+// Global: MenuConfig — Sezioni e Visibilità
 // ---------------------------------------------------------------------------
+
+/**
+ * Slot di servizio: pranzo, cena o sempre visibile.
+ * Usato per filtrare le sezioni in base all'orario corrente.
+ */
+export type SlotVisibilita = "lunch" | "dinner" | "always";
+
+/**
+ * Singola voce di un menu speciale (es. "Business Lunch").
+ * Può essere un riferimento a un piatto o a un vino.
+ */
+export interface VoceMenuSpeciale {
+  id?: string;
+  piatto?: Piatto | string;
+  vino?: Vino | string;
+  /** Prezzo override per questo menu speciale */
+  prezzoOverride?: number;
+  nota?: string;
+}
+
+/**
+ * Sezione del menu configurata nel CMS.
+ * Ogni sezione raggruppa piatti per categoria o per lista esplicita.
+ */
+export interface SezioneMenuConfig {
+  id?: string;
+  titolo: string;
+  slug: string;
+  /** Visibilità in base allo slot di servizio */
+  visibility: SlotVisibilita;
+  /**
+   * Se presente, la sezione mostra solo i piatti della categoria indicata
+   * (modalità standard: tutte le voci della categoria).
+   */
+  categoria?: CategoriaMenu | string;
+  /**
+   * Lista esplicita di piatti/vini da mostrare (es. menu degustazione).
+   * Ha precedenza su `categoria` se entrambi sono presenti.
+   */
+  specialItems?: VoceMenuSpeciale[];
+  /**
+   * Intervallo di date in cui questa sezione usa `specialItems`
+   * al posto della lista standard derivata da `categoria`.
+   * Formato ISO: "YYYY-MM-DD".
+   */
+  specialPeriod?: {
+    dal: string;
+    al: string;
+  };
+  ordine?: number;
+}
 
 /** Configurazione generale del menu (colori, testi, logo, ecc.) */
 export interface MenuConfig {
@@ -150,6 +201,8 @@ export interface MenuConfig {
   mostraVini: boolean;
   /** Se true mostra gli allergeni per ogni piatto */
   mostraAllergeni: boolean;
+  /** Sezioni configurate nel CMS (ordinate per campo `ordine`) */
+  sezioni?: SezioneMenuConfig[];
   updatedAt: string;
 }
 
@@ -206,4 +259,26 @@ export interface StaticMenuData {
   allergeni: Allergene[];
   menuConfig: MenuConfig;
   generali: Generali;
+}
+
+// ---------------------------------------------------------------------------
+// Tipi derivati — output degli hook client-side
+// ---------------------------------------------------------------------------
+
+/** Slot di servizio attivo (pranzo / cena / nessuno) */
+export type ActiveSlot = "lunch" | "dinner" | null;
+
+/**
+ * Sezione del menu già risolta con i piatti/vini effettivi.
+ * Prodotta da `useMenuStructure` a partire da `SezioneMenuConfig`.
+ */
+export interface SezioneRisolta {
+  slug: string;
+  titolo: string;
+  /** I piatti da mostrare in questa sezione (già filtrati e ordinati) */
+  piatti: Piatto[];
+  /** I vini da mostrare in questa sezione (già filtrati e ordinati) */
+  vini: Vino[];
+  /** true se la sezione usa la lista speciale anziché la categoria standard */
+  isSpecialPeriod: boolean;
 }
