@@ -63,6 +63,12 @@ export interface Allergene {
 /**
  * Categoria del menu — embedded nel piatto, non ha endpoint REST proprio.
  * Estratta a build-time dai piatti tramite getStaticMenuData().
+ *
+ * Struttura reale del backend (verificata via API):
+ * - `inLista`: boolean (visibilità), NON `attiva`
+ * - `elementi`: relazione inversa (lista id piatti) — ignorata nel frontend
+ * - `slug`: NON presente nel backend, generato a build-time con slugify()
+ * - `_status`: "published" | "draft" — ignorato nel frontend
  */
 export interface CategoriaMenu {
   id: number;
@@ -72,7 +78,10 @@ export interface CategoriaMenu {
   descrizione?: string;
   /** Ordine di visualizzazione (derivato dall'ordine di comparsa nei piatti) */
   ordine?: number;
-  attiva: boolean;
+  /** Visibilità nel menu — campo reale del backend (era `attiva` in precedenza) */
+  inLista?: boolean;
+  /** @deprecated Usa inLista. Mantenuto per retrocompatibilità con dati dummy. */
+  attiva?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -149,97 +158,171 @@ export interface Vino {
 // ---------------------------------------------------------------------------
 
 /**
- * Slot di servizio: pranzo, cena o sempre visibile.
- * Usato per filtrare le sezioni in base all'orario corrente.
+ * Slot di servizio — valori reali del backend.
+ * "lunch_only" e "dinner_only" sono i valori usati dal CMS.
  */
-export type SlotVisibilita = "lunch" | "dinner" | "always";
+export type SlotVisibilita = "lunch_only" | "dinner_only" | "always";
 
 /**
- * Singola voce di un menu speciale (es. "Business Lunch").
+ * Modalità di filtro per una sezione virtuale del menu.
+ *
+ * - `all`:     mostra tutti gli item della sourceCollection (nessun filtro categoria)
+ * - `include`: mostra solo gli item le cui categorie sono in targetCategories
+ * - `exclude`: mostra tutti gli item TRANNE quelli nelle targetCategories
  */
-export interface VoceMenuSpeciale {
-  id?: string;
-  piatto?: Piatto | number;
-  vino?: Vino | number;
-  prezzoOverride?: number;
-  nota?: string;
+export type FilterMode = "all" | "include" | "exclude";
+
+/**
+ * Collezioni disponibili nel backend come sourceCollection.
+ * Il frontend gestisce: "piatti", "vini".
+ * Le altre ("menu-fisso", "bevande", "birre", "liquori") sono riconosciute
+ * ma non ancora implementate — vengono mostrate come sezioni vuote.
+ */
+export type SourceCollection =
+  | "piatti"
+  | "vini"
+  | "menu-fisso"
+  | "bevande"
+  | "birre"
+  | "liquori";
+
+/**
+ * Riferimento a una categoria target nel formato reale del backend.
+ * Payload usa una struttura polimorphic: { relationTo, value }.
+ */
+export interface TargetCategoryRef {
+  relationTo: string; // es. "categoria-piatti", "categoria-menu-fisso"
+  value: {
+    id: number;
+    nome: string;
+    inLista?: boolean;
+    descrizione?: string;
+    [key: string]: unknown;
+  };
 }
 
 /**
- * Sezione del menu configurata nel CMS.
+ * Sezione del menu configurata nel CMS (standardItems).
+ *
+ * Struttura reale del backend (verificata via API):
+ * - `label`: titolo visualizzato (non `titolo`)
+ * - `slug`: NON presente — generato a build-time da slugify(label)
+ * - `visibility`: "lunch_only" | "dinner_only" | "always"
+ * - `sourceCollection`: array di stringhe (non stringa singola)
+ * - `targetCategories`: array di { relationTo, value } (non array di id)
  */
 export interface SezioneMenuConfig {
   id?: string;
-  titolo: string;
+  /** Titolo visualizzato — campo reale del backend */
+  label: string;
+  /** Slug URL-safe — generato a build-time da slugify(label), non presente nel backend */
   slug: string;
   visibility: SlotVisibilita;
-  /** ID numerico della categoria associata */
-  categoria?: CategoriaMenu | number;
-  specialItems?: VoceMenuSpeciale[];
-  specialPeriod?: {
-    dal: string;
-    al: string;
-  };
+  /** Array di collection sorgente (es. ["piatti"], ["bevande", "birre"]) */
+  sourceCollection: SourceCollection[];
+  filterMode: FilterMode;
+  /** Categorie target nel formato polimorphic di Payload */
+  targetCategories: TargetCategoryRef[];
   ordine?: number;
 }
 
-/** Configurazione generale del menu */
+/**
+ * Configurazione generale del menu.
+ *
+ * Struttura reale del backend (verificata via API):
+ * - `standardItems`: array di sezioni (non `sezioni`)
+ * - `isActive` + `activeRange`: per il periodo speciale globale
+ * - NON ha nomeRistorante, logo, indirizzo, telefono, social — sono campi da aggiungere
+ */
 export interface MenuConfig {
-  id: string;
-  nomeRistorante: string;
-  logo?: PayloadMedia | number;
-  colorePrimario?: string;
-  coloreTesto?: string;
+  id: string | number;
+  /** Sezioni del menu — campo reale del backend */
+  standardItems?: SezioneMenuConfig[];
+  /** Se true, è attivo un menu speciale (es. periodo festivo) */
+  isActive?: boolean;
+  activeRange?: {
+    start: string | null;
+    end: string | null;
+  };
+  /** Campi opzionali — potrebbero non essere presenti nel backend attuale */
+  nomeRistorante?: string;
   testoFooter?: string;
   messaggioBenvenuto?: string;
   indirizzo?: string;
   telefono?: string;
   instagram?: string;
   facebook?: string;
-  mostraVini: boolean;
-  mostraAllergeni: boolean;
-  sezioni?: SezioneMenuConfig[];
   updatedAt: string;
+  createdAt?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Global: Generali (Orari e Chiusure)
 // ---------------------------------------------------------------------------
 
+/**
+ * Giorno della settimana — formato inglese usato dal backend reale.
+ * (es. "monday", "tuesday", ...)
+ */
 export type GiornoSettimana =
-  | "lunedi"
-  | "martedi"
-  | "mercoledi"
-  | "giovedi"
-  | "venerdi"
-  | "sabato"
-  | "domenica";
+  | "monday"
+  | "tuesday"
+  | "wednesday"
+  | "thursday"
+  | "friday"
+  | "saturday"
+  | "sunday";
 
+/** Fascia oraria singola (un turno di servizio) */
 export interface FasciaOraria {
-  apertura: string; // "HH:mm"
-  chiusura: string; // "HH:mm"
+  id?: string;
+  /** Orario di apertura "HH:mm" */
+  start: string;
+  /** Orario di chiusura "HH:mm" */
+  end: string;
 }
 
+/** Riga dell'orario settimanale */
 export interface OrarioGiorno {
-  giorno: GiornoSettimana;
-  aperto: boolean;
-  fasce?: FasciaOraria[];
+  id?: string;
+  day: GiornoSettimana;
+  isOpen: boolean;
+  hours?: FasciaOraria[];
 }
 
+/** Slot di servizio esplicito (pranzo / cena) */
+export interface SlotOrario {
+  start: string; // "HH:mm"
+  end: string;   // "HH:mm"
+}
+
+/** Eccezione di orario (festività, chiusura straordinaria) */
 export interface EccezioneOrario {
   id?: string;
-  data: string; // "YYYY-MM-DD"
-  chiuso: boolean;
-  descrizione?: string;
-  fasce?: FasciaOraria[];
+  /** Data in formato "YYYY-MM-DD" */
+  date: string;
+  isClosed: boolean;
+  description?: string;
+  hours?: FasciaOraria[];
 }
 
+/**
+ * Global "generali" — orari e configurazione del ristorante.
+ *
+ * Struttura reale del backend (verificata via API):
+ * - `scheduleWeekly`: array di OrarioGiorno con `day` in inglese
+ * - `lunchSlot` / `dinnerSlot`: slot di servizio espliciti
+ * - `exceptions`: eccezioni di orario
+ */
 export interface Generali {
-  id: string;
-  orari: OrarioGiorno[];
-  eccezioni?: EccezioneOrario[];
+  id: string | number;
+  scheduleWeekly: OrarioGiorno[];
+  lunchSlot?: SlotOrario;
+  dinnerSlot?: SlotOrario;
+  exceptions?: EccezioneOrario[];
   messaggioChiusura?: string;
   updatedAt: string;
+  createdAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +337,12 @@ export interface StaticMenuData {
   allergeni: Allergene[];
   menuConfig: MenuConfig;
   generali: Generali;
+  /**
+   * Sezioni già risolte a build-time: ogni sezione ha i piatti/vini
+   * filtrati secondo la configurazione del Query Builder (filterMode + targetCategories).
+   * Pronte per il rendering — non richiedono ulteriore elaborazione a runtime.
+   */
+  sezioniRisolte: SezioneRisolta[];
 }
 
 // ---------------------------------------------------------------------------

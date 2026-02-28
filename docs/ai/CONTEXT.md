@@ -20,12 +20,19 @@ Un menu digitale statico per il ristorante **Vietnamonamour** (Milano). Il clien
 
 ```
 /                    → HomeIndex: lista sezioni come card cliccabili
-/menu/[slug]         → CategoryPage: lista piatti di una categoria
+/menu/[slug]         → CategoryPage: lista piatti di una sezione virtuale
 ```
 
 L'utente scansiona il QR code → vede l'indice delle sezioni → clicca su una sezione → vede i piatti. Le sezioni fuori orario (es. "Pranzo" di sera) non compaiono nell'indice.
 
-`menu-config` (Global Payload) definisce l'ordine e la visibilità delle sezioni. Se non configurato, le sezioni vengono generate automaticamente dalle categorie dei piatti con `visibility: 'always'`.
+**Il routing è guidato da `menu-config.standardItems`, non dalla tassonomia del DB.**
+Lo slug `/menu/[slug]` corrisponde a una "Sezione Virtuale" configurata nel CMS. **Gli slug non esistono nel backend**: vengono generati a build-time con `slugify(label)` in `normalizeStandardItems()`.
+
+`menu-config` (Global Payload) è un **Query Builder**: ogni sezione ha `filterMode` (`all`/`include`/`exclude`), `sourceCollection` (array di collection), e `targetCategories` (struttura polimorphic Payload). Se non configurato, le sezioni vengono generate automaticamente dalle categorie dei piatti.
+
+Le sezioni vengono risolte a build-time da `resolveMenuSection()` in `api.ts` e salvate in `StaticMenuData.sezioniRisolte`. La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` — non cerca la categoria nel DB.
+
+---
 
 ## Mappa dei file chiave
 
@@ -52,13 +59,13 @@ Tre livelli di decisione, eseguiti in sequenza:
 ```
 1. QUANDO siamo?
    useTimekeeper(generali)
-   └─ Orario browser + orari settimanali + eccezioni
+   └─ Orario browser + scheduleWeekly + exceptions + lunchSlot/dinnerSlot
    └─ Output: isOpen (bool), activeSlot ('lunch'|'dinner'|null), isHoliday (bool)
 
 2. COSA mostriamo?
-   useMenuStructure({ menuConfig, activeSlot, piatti, vini })
-   └─ Filtra sezioni per visibility (lunch/dinner/always)
-   └─ Risolve piatti per categoria o specialItems
+   useMenuStructure({ menuConfig, activeSlot, piatti, vini, sezioniRisolte })
+   └─ Filtra sezioni per visibility ("always"/"lunch_only"/"dinner_only")
+   └─ Usa sezioniRisolte già calcolate a build-time
    └─ Output: SezioneRisolta[] (sezioni con piatti già popolati)
 
 3. COSA è disponibile?
@@ -67,9 +74,89 @@ Tre livelli di decisione, eseguiti in sequenza:
    └─ MenuSection filtra piatti con stato ≠ 'disponibile'
 ```
 
-**Regola fondamentale:** se `activeSlot === null` (fuori orario di servizio), le sezioni con `visibility: 'lunch'` o `'dinner'` scompaiono. Rimangono solo quelle `'always'` (es. carta vini, bevande).
+**Regola fondamentale:** se `activeSlot === null` (fuori orario di servizio), le sezioni con `visibility: 'lunch_only'` o `'dinner_only'` scompaiono. Rimangono solo quelle `'always'` (es. carta vini, bevande).
 
 **Piatto esaurito = piatto invisibile.** Non viene mostrato con opacità ridotta o badge — viene rimosso dalla lista. Il filtro avviene in `MenuSection`, non in `DishCard`.
+
+---
+
+## Struttura dati reale del backend
+
+> **CRITICO:** La struttura del backend è stata verificata via `curl` diretto. Non fare assunzioni — usa sempre i tipi in `src/types/payload-types.ts`.
+
+### Piatto (struttura reale)
+
+```typescript
+{
+  id: number,           // es. 202 — NUMERICO, non UUID
+  nome: string,
+  prezzo: number,
+  descrizione?: string,
+  inLista: boolean,     // true = visibile nel menu (non "attiva")
+  soloMenuFissi: boolean,
+  glutenFree: boolean,  // NON c'è tag[], i dietetici sono booleani separati
+  noUovo: boolean,
+  noLatticini: boolean,
+  vegan: boolean,
+  categoria: CategoriaMenu | number,  // embedded o id
+  allergeni: (Allergene | number)[],
+}
+```
+
+### Generali (struttura reale)
+
+```typescript
+{
+  scheduleWeekly: Array<{
+    day: "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
+    isOpen: boolean,          // NON "aperto"
+    hours: Array<{ start: string, end: string }>  // NON "apertura"/"chiusura"
+  }>,
+  lunchSlot: { start: string, end: string } | null,
+  dinnerSlot: { start: string, end: string } | null,
+  exceptions: Array<{
+    date: string,             // NON "data"
+    isClosed: boolean,        // NON "chiuso"
+    description?: string,
+  }>
+}
+```
+
+### MenuConfig (struttura reale)
+
+```typescript
+{
+  standardItems: Array<{
+    id: string,               // ID Payload (stringa)
+    label: string,            // NON "titolo"
+    // slug NON esiste nel backend — generato da slugify(label)
+    visibility: "always" | "lunch_only" | "dinner_only",  // NON "lunch"/"dinner"
+    sourceCollection: string[],  // ARRAY, es. ["piatti"] o ["bevande","birre"]
+    filterMode: "all" | "include" | "exclude",
+    targetCategories: Array<{
+      relationTo: string,     // es. "categoria-piatti"
+      value: { id: number, nome: string, ... }  // popolato solo con ?depth=2
+    }>
+  }>,
+  isActive: boolean,
+  activeRange: { start: string | null, end: string | null },
+  specialItems: unknown[]
+}
+```
+
+> **IMPORTANTE:** `menu-config` deve essere fetchato con `?depth=2`, altrimenti `targetCategories.value` non viene popolato e il Query Builder non funziona.
+
+### Categorie
+
+**Non hanno endpoint REST proprio.** Vengono estratte a build-time dai piatti (`piatto.categoria` è embedded). Lo slug viene generato con `slugify(nome)`.
+
+### Globals — comportamento di fallback
+
+| Scenario | Comportamento |
+|---|---|
+| Backend risponde 500 | `fetchGlobalSafe` restituisce `null` → fallback |
+| Backend risponde `{}` (configurato ma vuoto) | Trattato come `null` → fallback |
+| `standardItems` è array vuoto | Sezioni auto-generate dalle categorie dei piatti |
 
 ---
 
@@ -83,8 +170,8 @@ app/page.tsx (Server)
   └─ <HomeIndex staticData={...} />
 
 HomeIndex (Client)
-  └─ <MenuProvider menuConfig generali piatti vini>
-       └─ useTimekeeper → status
+  └─ <MenuProvider menuConfig generali piatti vini sezioniRisolte>
+       └─ useTimekeeper(generali) → status
        └─ useMenuStructure → sections (filtrate per slot)
        └─ getRealTimeAvailability → availability
        └─ <IndexContent>
@@ -100,60 +187,27 @@ HomeIndex (Client)
 
 ```
 app/menu/[slug]/page.tsx (Server)
-  └─ generateStaticParams() → [{ slug: "antipasti" }, ...]
+  └─ generateStaticParams() → slug da standardItems (via slugify(label))
   └─ getStaticMenuData() → StaticMenuData
-  └─ filtra piatti per categoria.id
-  └─ <CategoryPage staticData categoria piatti />
+  └─ cerca sezione in sezioniRisolte per slug
+  └─ <CategoryPage staticData sezione />
 
 CategoryPage (Client)
   └─ <MenuProvider menuConfig generali piatti vini>
        └─ getRealTimeAvailability → availability
-       └─ <CategoryContent>
+       └─ <CategoryContent sezione>
             ├─ <MenuHeader />
             ├─ <BackButton /> → Link href="/"
-            ├─ <MenuSection categoria piatti availability />
+            ├─ <MenuSection categoria={virtuale} piatti={sezione.piatti} availability />
             │    └─ piattiVisibili.map(piatto =>
             │         <DishCard piatto />
             │       )
             └─ <MenuFooter />
 ```
 
-**Regola:** `DishCard` non sa nulla di disponibilità — riceve solo piatti già filtrati. `MenuSection` è il guardiano che decide quali piatti passare.
+**Regola:** `sezione.piatti` contiene già i piatti filtrati dal Query Builder (filterMode + targetCategories). `MenuSection` filtra ulteriormente per disponibilità real-time. `DishCard` non sa nulla di disponibilità.
 
 **Regola:** `MenuProvider` è presente in **entrambe** le pagine. È necessario anche nella pagina dettaglio per il polling della disponibilità real-time.
-
----
-
-## Struttura dati reale del backend
-
-> Gli id sono **numerici** (`number`), non UUID stringhe. Questo è diverso dal default di Payload — è la struttura verificata via API.
-
-### Piatto (struttura reale)
-
-```typescript
-{
-  id: number,           // es. 202
-  nome: string,
-  prezzo: number,
-  descrizione?: string,
-  inLista: boolean,     // true = visibile nel menu
-  soloMenuFissi: boolean,
-  glutenFree: boolean,  // NON c'è tag[], i dietetici sono booleani separati
-  noUovo: boolean,
-  noLatticini: boolean,
-  vegan: boolean,
-  categoria: CategoriaMenu | number,  // embedded o id
-  allergeni: (Allergene | number)[],
-}
-```
-
-### Categorie
-
-**Non hanno endpoint REST proprio.** Vengono estratte a build-time dai piatti (`piatto.categoria` è embedded). Lo slug viene generato con `slugify(nome)`.
-
-### Globals (menu-config, generali)
-
-Possono rispondere con 500 se non ancora configurati nel CMS. `fetchGlobalSafe()` gestisce questo restituendo `null` → si usano i fallback hardcoded. Se `menu-config.sezioni` è vuoto, le sezioni vengono generate automaticamente dalle categorie.
 
 ---
 
@@ -162,7 +216,9 @@ Possono rispondere con 500 se non ancora configurati nel CMS. `fetchGlobalSafe()
 ### TypeScript
 
 - Nessun `any`. Usa `unknown` se il tipo è davvero sconosciuto.
+- Gli id di Payload sono **numerici** (`number`), non UUID stringhe.
 - I campi relazione di Payload possono essere oggetto popolato **o** id numerico: `categoria: CategoriaMenu | number`.
+- `targetCategories` usa la struttura polimorphic: `{ relationTo: string, value: { id: number, nome: string } }`.
 - Importa sempre i tipi da `@/types` (mai percorsi relativi per i tipi).
 - `fetch` nativo — nessuna libreria HTTP esterna.
 
@@ -205,14 +261,17 @@ Prima di scrivere qualsiasi classe CSS/Tailwind, verifica sempre:
 1. Aggiungi l'interfaccia in `src/types/payload-types.ts`.
 2. Aggiungi il tipo a `StaticMenuData` se serve a build-time.
 3. Aggiungi `fetchAllDocs<NuovoTipo>("slug")` in `getStaticMenuData()` dentro `Promise.all`.
+4. Aggiorna `resolveMenuSection()` in `api.ts` per gestire la nuova `sourceCollection`.
 
 ### Nuova sezione del menu
 
-Le sezioni sono configurate nel CMS (Global `menu-config`, campo `sezioni`). Non richiedono modifiche al codice frontend. Il campo `visibility` controlla quando la sezione è visibile (`lunch`/`dinner`/`always`).
+Le sezioni sono configurate nel CMS (Global `menu-config`, campo `standardItems`). Non richiedono modifiche al codice frontend. Il campo `visibility` controlla quando la sezione è visibile (`always`/`lunch_only`/`dinner_only`).
 
 La nuova sezione comparirà automaticamente:
 1. Nell'indice Home come `SectionCard` cliccabile.
 2. Come pagina `/menu/[slug]` pre-renderizzata a build-time (grazie a `generateStaticParams`).
+
+> **Nota:** lo slug viene generato da `slugify(label)`. Se `label` cambia nel CMS, lo slug cambia e i link precedenti diventano 404.
 
 ### Nuovo stato globale
 
@@ -234,7 +293,11 @@ Il sistema è progettato per non crashare mai in produzione:
 | Scenario | Comportamento |
 |---|---|
 | Backend Payload irraggiungibile a build-time | Build fallisce esplicitamente (errore chiaro in CI) |
-| Global `menu-config` o `generali` → 500 | Fallback hardcoded, build continua |
+| Global `menu-config` → 500 o `{}` | Fallback hardcoded, build continua |
+| Global `generali` → 500 o `{}` | Fallback hardcoded, build continua |
+| `menu-config.standardItems` vuoto | Sezioni auto-generate dalle categorie dei piatti |
+| `menu-config` fetchato senza `?depth=2` | `targetCategories.value` è `undefined` → sezioni vuote |
 | GCS irraggiungibile a runtime | `availability = null` → tutto mostrato come disponibile |
 | Sezione con tutti i piatti esauriti | `MenuSection` restituisce `null` → sezione invisibile |
 | Ristorante chiuso | Banner discreto nell'header, menu consultabile |
+| `sourceCollection` non supportata (es. "bevande") | `resolveMenuSection` restituisce sezione vuota, non crasha |

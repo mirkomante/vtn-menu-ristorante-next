@@ -9,68 +9,35 @@
  * Logica applicata:
  * 1. Filtra le sezioni in base allo slot attivo (visibility: lunch/dinner/always).
  * 2. Per ogni sezione, determina se siamo nel `specialPeriod`.
- * 3. Popola la sezione con i piatti/vini reali:
+ * 3. Popola la sezione con i piatti/vini reali usando il Query Builder:
  *    - Se specialPeriod attivo → usa `specialItems`.
- *    - Altrimenti → filtra i piatti per `categoria`.
+ *    - Altrimenti → applica filterMode (all/include/exclude) su targetCategories.
  * 4. Ordina le sezioni per campo `ordine`.
+ *
+ * NOTA: a runtime (client-side) usa `resolveMenuSection` da api.ts per coerenza
+ * con la logica build-time. Le sezioni pre-risolte in `staticData.sezioniRisolte`
+ * vengono filtrate per slot — non ricalcolate da zero.
  */
 
 import { useMemo } from "react";
-import type {
-  ActiveSlot,
-  CategoriaMenu,
-  MenuConfig,
-  Piatto,
-  SezioneMenuConfig,
-  SezioneRisolta,
-  Vino,
-} from "@/types";
+import type { ActiveSlot, MenuConfig, Piatto, SezioneRisolta, Vino } from "@/types";
+import { resolveMenuSection } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Helpers puri
 // ---------------------------------------------------------------------------
 
 /**
- * Estrae l'ID da un campo che può essere un oggetto popolato o un id numerico.
- * Restituisce sempre una stringa per uniformità nei confronti.
- */
-function resolveId(ref: { id: number | string } | number | string | undefined): string | null {
-  if (ref === null || ref === undefined) return null;
-  if (typeof ref === "number" || typeof ref === "string") return String(ref);
-  return String(ref.id);
-}
-
-/**
- * Verifica se la data odierna (formato "YYYY-MM-DD") cade nel periodo speciale.
- */
-function isInSpecialPeriod(
-  todayStr: string,
-  period: SezioneMenuConfig["specialPeriod"]
-): boolean {
-  if (!period) return false;
-  return todayStr >= period.dal && todayStr <= period.al;
-}
-
-/**
- * Formatta una Date come "YYYY-MM-DD" nel fuso locale del browser.
- */
-function toLocalDateString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-/**
  * Determina se una sezione deve essere visibile dato lo slot attivo.
+ * Usa i valori reali del backend: "lunch_only", "dinner_only", "always".
  */
 function isSectionVisible(
   visibility: SezioneMenuConfig["visibility"],
   activeSlot: ActiveSlot
 ): boolean {
   if (visibility === "always") return true;
-  if (visibility === "lunch") return activeSlot === "lunch";
-  if (visibility === "dinner") return activeSlot === "dinner";
+  if (visibility === "lunch_only") return activeSlot === "lunch";
+  if (visibility === "dinner_only") return activeSlot === "dinner";
   return false;
 }
 
@@ -83,85 +50,43 @@ export interface MenuStructureInput {
   activeSlot: ActiveSlot;
   piatti: Piatto[];
   vini: Vino[];
-  /** Usato per determinare il specialPeriod; default: new Date() */
-  today?: Date;
 }
 
 /**
  * Risolve le sezioni del menu a partire dalla configurazione e dai dati grezzi.
  * Funzione pura: non usa hook React, facilmente testabile.
+ *
+ * Usa `resolveMenuSection` (da api.ts) per applicare la logica del Query Builder
+ * (filterMode: all/include/exclude) in modo coerente con la build-time.
  */
 export function computeMenuStructure({
   menuConfig,
   activeSlot,
   piatti,
   vini,
-  today = new Date(),
 }: MenuStructureInput): SezioneRisolta[] {
-  const sezioni = menuConfig.sezioni ?? [];
-  const todayStr = toLocalDateString(today);
-
-  // Indice rapido: categoriaId (stringa) → piatti (evita O(n²) nel loop)
-  const piattiByCategoria = new Map<string, Piatto[]>();
-  for (const piatto of piatti) {
-    const catId = resolveId(piatto.categoria);
-    if (!catId) continue;
-    const existing = piattiByCategoria.get(catId) ?? [];
-    existing.push(piatto);
-    piattiByCategoria.set(catId, existing);
-  }
+  // Usa standardItems (struttura reale del backend)
+  const sezioni = menuConfig.standardItems ?? [];
 
   const risultati: SezioneRisolta[] = [];
 
   for (const sezione of sezioni) {
-    // 1. Visibilità per slot
+    // Filtra per slot attivo
     if (!isSectionVisible(sezione.visibility, activeSlot)) continue;
 
-    const isSpecialPeriod = isInSpecialPeriod(todayStr, sezione.specialPeriod);
-
-    let piattiSezione: Piatto[] = [];
-    let viniSezione: Vino[] = [];
-
-    if (isSpecialPeriod && sezione.specialItems && sezione.specialItems.length > 0) {
-      // 2a. Modalità speciale: lista esplicita dal CMS
-      for (const voce of sezione.specialItems) {
-        if (voce.piatto) {
-          const id = resolveId(voce.piatto);
-          const found = id ? piatti.find((p) => String(p.id) === id) : null;
-          if (found) piattiSezione.push(found);
-        }
-        if (voce.vino) {
-          const id = resolveId(voce.vino);
-          const found = id ? vini.find((v) => String(v.id) === id) : null;
-          if (found) viniSezione.push(found);
-        }
-      }
-    } else if (sezione.categoria) {
-      // 2b. Modalità standard: tutti i piatti della categoria
-      const catId = resolveId(sezione.categoria);
-      if (catId) {
-        piattiSezione = piattiByCategoria.get(catId) ?? [];
-      }
-    }
-
-    // 3. Ordina per campo `ordine` (ascendente, undefined va in fondo)
-    piattiSezione = [...piattiSezione].sort(
-      (a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999)
-    );
-    viniSezione = [...viniSezione].sort(
-      (a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999)
-    );
+    // Query Builder: filterMode + targetCategories
+    const { piatti: piattiSezione, vini: viniSezione } = resolveMenuSection(sezione, piatti, vini);
 
     risultati.push({
       slug: sezione.slug,
-      titolo: sezione.titolo,
+      titolo: sezione.label,
       piatti: piattiSezione,
       vini: viniSezione,
-      isSpecialPeriod,
+      isSpecialPeriod: false,
     });
   }
 
-  // 4. Ordina le sezioni per campo `ordine`
+  // Ordina le sezioni per campo `ordine`
   return risultati.sort(
     (a, b) =>
       (sezioni.find((s) => s.slug === a.slug)?.ordine ?? 9999) -

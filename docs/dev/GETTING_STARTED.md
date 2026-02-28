@@ -33,11 +33,11 @@ Entrambe le variabili sono prefissate `NEXT_PUBLIC_` perché vengono usate anche
 | Comando | Descrizione |
 |---|---|
 | `pnpm dev` | Avvia il dev server (porta 3000 di default) |
-| `pnpm build --webpack` | Build statica SSG → cartella `out/` |
+| `pnpm build` | Build statica SSG → cartella `out/` |
 | `pnpm start` | Serve la build locale (non usato in produzione) |
 | `firebase deploy` | Deploy su Firebase Hosting dalla cartella `out/` |
 
-> **Nota:** usa sempre `pnpm build --webpack` (non `pnpm build`) per evitare problemi di compatibilità di Turbopack con `next/font/google` in modalità SSG.
+> **Nota:** se si verificano problemi con Turbopack e `next/font/google` in modalità SSG, usa `pnpm build --webpack` per forzare il bundler Webpack.
 
 ## Struttura del progetto
 
@@ -49,6 +49,9 @@ vtn-menu-ristorante-next/
 │   ├── globals.css                 # Tema Tailwind v4 (@theme) + reset CSS
 │   ├── layout.tsx                  # Root layout (font, metadata, classi body)
 │   ├── page.tsx                    # Homepage — Server Component async
+│   ├── menu/
+│   │   └── [slug]/
+│   │       └── page.tsx            # Pagina dettaglio sezione (SSG)
 │   └── design-system/
 │       └── page.tsx                # Preview Design System (solo sviluppo)
 │
@@ -77,12 +80,13 @@ vtn-menu-ristorante-next/
 │       │   └── index.ts
 │       │
 │       └── menu/                   # Componenti di dominio
-│           ├── DishCard.tsx        # Singolo piatto (stile Minimal)
-│           ├── MenuSection.tsx     # Sezione categoria con lista piatti
+│           ├── DishCard.tsx        # Singolo piatto (stile Minimal B2)
+│           ├── MenuSection.tsx     # Sezione con lista piatti (filtra esauriti)
+│           ├── HomeIndex.tsx       # Client Component per la Home Indice
+│           ├── CategoryPage.tsx    # Client Component per la pagina dettaglio
 │           ├── StickyNav.tsx       # Navigazione sticky
-│           ├── MenuOrchestrator.tsx # Client Component radice
-│           ├── MenuHeader.tsx      # Header bordeaux
-│           ├── MenuFooter.tsx      # Footer bordeaux
+│           ├── MenuHeader.tsx      # Header (bg-background, testo bordeaux)
+│           ├── MenuFooter.tsx      # Footer (bg-text-main, testo chiaro)
 │           └── index.ts
 │
 ├── docs/                           # Documentazione

@@ -1,25 +1,25 @@
 "use client";
 
 /**
- * CategoryPage — Client Component per la pagina dettaglio di una categoria.
+ * CategoryPage — Client Component per la pagina dettaglio di una sezione virtuale.
  *
- * Riceve i dati statici della categoria dal Server Component e:
+ * Riceve una SezioneRisolta (già risolta dal Query Builder a build-time) e:
  * 1. Inizializza MenuProvider per il polling della disponibilità real-time.
- * 2. Mostra il titolo della categoria e la lista dei piatti con DishCard.
+ * 2. Mostra il titolo della sezione e la lista dei piatti con DishCard.
  * 3. Filtra automaticamente i piatti esauriti tramite MenuSection.
  *
- * Il MenuProvider è necessario anche qui per:
- * - Polling disponibilità GCS (piatti esauriti aggiornati in tempo reale)
- * - Stato apertura ristorante (banner chiusura nell'header)
+ * La sezione può contenere piatti da più categorie (aggregazione virtuale)
+ * o un sottoinsieme filtrato per inclusione/esclusione — tutto già risolto
+ * a build-time da resolveMenuSection() in api.ts.
  */
 
 import Link from "next/link";
 import { useMenu, MenuProvider } from "@/context/MenuContext";
-import { Container, Text } from "@/components/ui";
+import { Container, Heading, Text } from "@/components/ui";
 import { MenuHeader } from "./MenuHeader";
 import { MenuFooter } from "./MenuFooter";
 import { MenuSection } from "./MenuSection";
-import type { CategoriaMenu, Piatto, StaticMenuData } from "@/types";
+import type { SezioneRisolta, StaticMenuData } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Tipi
@@ -28,10 +28,8 @@ import type { CategoriaMenu, Piatto, StaticMenuData } from "@/types";
 export interface CategoryPageProps {
   /** Tutti i dati statici (necessari per MenuProvider) */
   staticData: StaticMenuData;
-  /** La categoria corrente da visualizzare */
-  categoria: CategoriaMenu;
-  /** I piatti di questa categoria */
-  piatti: Piatto[];
+  /** La sezione virtuale risolta dal Query Builder */
+  sezione: SezioneRisolta;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,12 +64,22 @@ function BackButton() {
 // ---------------------------------------------------------------------------
 
 interface CategoryContentProps {
-  categoria: CategoriaMenu;
-  piatti: Piatto[];
+  sezione: SezioneRisolta;
 }
 
-function CategoryContent({ categoria, piatti }: CategoryContentProps) {
+function CategoryContent({ sezione }: CategoryContentProps) {
   const { availability, status, menuConfig, generali } = useMenu();
+
+  // Costruisce una CategoriaMenu sintetica per MenuSection
+  // (necessaria per il titolo e l'anchor id della sezione)
+  const categoriaVirtuale = {
+    id: 0,
+    nome: sezione.titolo,
+    slug: sezione.slug,
+    attiva: true,
+    createdAt: "",
+    updatedAt: "",
+  };
 
   return (
     <>
@@ -80,18 +88,34 @@ function CategoryContent({ categoria, piatti }: CategoryContentProps) {
 
       <main className="min-h-screen bg-background">
         <Container as="div" className="py-8">
-          {piatti.length === 0 ? (
+          {sezione.piatti.length === 0 && sezione.vini.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Text variant="lead" muted>
                 Nessun piatto disponibile in questa sezione.
               </Text>
             </div>
           ) : (
-            <MenuSection
-              categoria={categoria}
-              piatti={piatti}
-              availability={availability}
-            />
+            <>
+              {sezione.piatti.length > 0 && (
+                <MenuSection
+                  categoria={categoriaVirtuale}
+                  piatti={sezione.piatti}
+                  availability={availability}
+                />
+              )}
+
+              {sezione.vini.length > 0 && (
+                <section className="py-10">
+                  <Heading level={2} color="bordeaux" className="mb-6">
+                    {sezione.titolo}
+                  </Heading>
+                  {/* Placeholder: WineCard da implementare */}
+                  <Text variant="body" muted>
+                    {sezione.vini.length} vini disponibili.
+                  </Text>
+                </section>
+              )}
+            </>
           )}
         </Container>
       </main>
@@ -105,17 +129,17 @@ function CategoryContent({ categoria, piatti }: CategoryContentProps) {
 // CategoryPage — entry point, inizializza il provider
 // ---------------------------------------------------------------------------
 
-export function CategoryPage({ staticData, categoria, piatti }: CategoryPageProps) {
-  const { menuConfig, generali, piatti: tuttiPiatti, vini } = staticData;
+export function CategoryPage({ staticData, sezione }: CategoryPageProps) {
+  const { menuConfig, generali, piatti, vini } = staticData;
 
   return (
     <MenuProvider
       menuConfig={menuConfig}
       generali={generali}
-      piatti={tuttiPiatti}
+      piatti={piatti}
       vini={vini}
     >
-      <CategoryContent categoria={categoria} piatti={piatti} />
+      <CategoryContent sezione={sezione} />
     </MenuProvider>
   );
 }

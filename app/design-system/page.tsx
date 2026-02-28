@@ -91,7 +91,7 @@ const DUMMY_CATEGORIA: CategoriaMenu = {
   nome: "Antipasti",
   slug: "antipasti",
   descrizione: "Piccoli assaggi per iniziare il pasto nel segno della freschezza.",
-  attiva: true,
+  inLista: true,
   createdAt: "",
   updatedAt: "",
 };

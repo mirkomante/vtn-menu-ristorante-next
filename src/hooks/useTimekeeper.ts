@@ -6,12 +6,25 @@
  * Mantiene sincronizzato l'orario del browser con la logica di apertura
  * del ristorante. Aggiorna lo stato ogni 30 secondi.
  *
+ * Struttura backend reale (verificata via API):
+ * - generali.scheduleWeekly[]: { day: "monday"|..., isOpen: bool, hours: [{start, end}] }
+ * - generali.lunchSlot: { start, end }   — slot pranzo esplicito
+ * - generali.dinnerSlot: { start, end }  — slot cena esplicito
+ * - generali.exceptions[]: { date: "YYYY-MM-DD", isClosed, hours? }
+ *
  * Input:  dati `Generali` (orari settimanali + eccezioni)
- * Output: { now, isOpen, activeSlot, isHoliday, holidayMessage }
+ * Output: { now, isOpen, activeSlot, isHoliday, closureMessage }
  */
 
 import { useEffect, useMemo, useState } from "react";
-import type { ActiveSlot, EccezioneOrario, FasciaOraria, Generali, GiornoSettimana } from "@/types";
+import type {
+  ActiveSlot,
+  EccezioneOrario,
+  FasciaOraria,
+  Generali,
+  GiornoSettimana,
+  SlotOrario,
+} from "@/types";
 
 // ---------------------------------------------------------------------------
 // Costanti
@@ -19,15 +32,15 @@ import type { ActiveSlot, EccezioneOrario, FasciaOraria, Generali, GiornoSettima
 
 const TICK_INTERVAL_MS = 30_000; // 30 secondi
 
-/** Mappa indice JS (0=domenica) → chiave GiornoSettimana */
+/** Mappa indice JS (0=domenica) → GiornoSettimana (inglese) */
 const JS_DAY_TO_GIORNO: GiornoSettimana[] = [
-  "domenica",
-  "lunedi",
-  "martedi",
-  "mercoledi",
-  "giovedi",
-  "venerdi",
-  "sabato",
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
 ];
 
 // ---------------------------------------------------------------------------
@@ -47,16 +60,12 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
-/**
- * Restituisce i minuti dall'inizio della giornata per una Date.
- */
+/** Restituisce i minuti dall'inizio della giornata per una Date. */
 function dateToMinutes(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
 }
 
-/**
- * Formatta una Date come stringa "YYYY-MM-DD" nel fuso locale del browser.
- */
+/** Formatta una Date come stringa "YYYY-MM-DD" nel fuso locale del browser. */
 function toLocalDateString(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -69,42 +78,48 @@ function toLocalDateString(date: Date): string {
  * Supporta fasce che scavalcano la mezzanotte (es. 22:00–02:00).
  */
 function isInFascia(currentMinutes: number, fascia: FasciaOraria): boolean {
-  const start = timeToMinutes(fascia.apertura);
-  const end = timeToMinutes(fascia.chiusura);
+  const start = timeToMinutes(fascia.start);
+  const end = timeToMinutes(fascia.end);
   if (start < 0 || end < 0) return false;
 
   if (end > start) {
-    // Fascia normale (es. 12:00–15:00)
     return currentMinutes >= start && currentMinutes < end;
   } else {
-    // Fascia notturna che scavalca mezzanotte (es. 22:00–02:00)
+    // Fascia notturna che scavalca mezzanotte
     return currentMinutes >= start || currentMinutes < end;
   }
 }
 
 /**
- * Data una lista di fasce orarie e l'orario corrente, determina lo slot attivo.
- *
- * Convenzione: la prima fascia del giorno è "lunch", la seconda è "dinner".
- * Se il ristorante ha una sola fascia, è sempre "dinner" (servizio unico serale).
+ * Verifica se l'orario corrente cade in uno SlotOrario esplicito.
+ */
+function isInSlot(currentMinutes: number, slot: SlotOrario): boolean {
+  return isInFascia(currentMinutes, { start: slot.start, end: slot.end });
+}
+
+/**
+ * Determina lo slot attivo (lunch/dinner/null) usando gli slot espliciti del backend.
+ * Se gli slot espliciti non sono presenti, usa la posizione nella lista hours[].
  */
 function resolveActiveSlot(
   currentMinutes: number,
-  fasce: FasciaOraria[]
+  hours: FasciaOraria[],
+  lunchSlot?: SlotOrario,
+  dinnerSlot?: SlotOrario
 ): ActiveSlot {
-  if (fasce.length === 0) return null;
+  if (hours.length === 0) return null;
 
-  if (fasce.length === 1) {
-    return isInFascia(currentMinutes, fasce[0]) ? "dinner" : null;
-  }
+  // Priorità: usa gli slot espliciti se disponibili
+  if (lunchSlot && isInSlot(currentMinutes, lunchSlot)) return "lunch";
+  if (dinnerSlot && isInSlot(currentMinutes, dinnerSlot)) return "dinner";
 
-  // Ordina per orario di apertura per garantire lunch < dinner
-  const sorted = [...fasce].sort(
-    (a, b) => timeToMinutes(a.apertura) - timeToMinutes(b.apertura)
+  // Fallback: prima fascia = lunch, seconda = dinner
+  const sorted = [...hours].sort(
+    (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
   );
+  if (sorted[0] && isInFascia(currentMinutes, sorted[0])) return "lunch";
+  if (sorted[1] && isInFascia(currentMinutes, sorted[1])) return "dinner";
 
-  if (isInFascia(currentMinutes, sorted[0])) return "lunch";
-  if (isInFascia(currentMinutes, sorted[1])) return "dinner";
   return null;
 }
 
@@ -121,7 +136,7 @@ export interface TimekeeperResult {
   activeSlot: ActiveSlot;
   /** Oggi è un giorno di eccezione (festività, chiusura straordinaria)? */
   isHoliday: boolean;
-  /** Messaggio di chiusura da mostrare (da eccezione o da Generali) */
+  /** Messaggio di chiusura da mostrare */
   closureMessage: string | null;
 }
 
@@ -137,40 +152,43 @@ export function computeTimekeeperState(
   const currentMinutes = dateToMinutes(now);
   const giornoCorrente = JS_DAY_TO_GIORNO[now.getDay()];
 
-  // 1. Controlla se oggi è un'eccezione
-  const eccezione: EccezioneOrario | undefined = generali.eccezioni?.find(
-    (e) => e.data === todayStr
+  // 1. Controlla eccezioni (festività, chiusure straordinarie)
+  const eccezione: EccezioneOrario | undefined = generali.exceptions?.find(
+    (e) => e.date === todayStr
   );
 
   if (eccezione) {
-    if (eccezione.chiuso) {
+    if (eccezione.isClosed) {
       return {
         now,
         isOpen: false,
         activeSlot: null,
         isHoliday: true,
-        closureMessage: eccezione.descrizione ?? generali.messaggioChiusura ?? null,
+        closureMessage: eccezione.description ?? generali.messaggioChiusura ?? null,
       };
     }
 
-    // Eccezione con orario speciale (es. apertura straordinaria)
-    const fasce = eccezione.fasce ?? [];
-    const isOpen = fasce.some((f) => isInFascia(currentMinutes, f));
-    const activeSlot = isOpen ? resolveActiveSlot(currentMinutes, fasce) : null;
+    // Eccezione con orario speciale
+    const hours = eccezione.hours ?? [];
+    const isOpen = hours.some((f) => isInFascia(currentMinutes, f));
+    const activeSlot = isOpen
+      ? resolveActiveSlot(currentMinutes, hours, generali.lunchSlot, generali.dinnerSlot)
+      : null;
 
     return {
       now,
       isOpen,
       activeSlot,
       isHoliday: true,
-      closureMessage: isOpen ? null : (eccezione.descrizione ?? generali.messaggioChiusura ?? null),
+      closureMessage: isOpen ? null : (eccezione.description ?? generali.messaggioChiusura ?? null),
     };
   }
 
   // 2. Orario settimanale standard
-  const orarioOggi = generali.orari.find((o) => o.giorno === giornoCorrente);
+  const scheduleWeekly = generali.scheduleWeekly ?? [];
+  const orarioOggi = scheduleWeekly.find((o) => o.day === giornoCorrente);
 
-  if (!orarioOggi || !orarioOggi.aperto) {
+  if (!orarioOggi || !orarioOggi.isOpen) {
     return {
       now,
       isOpen: false,
@@ -180,9 +198,11 @@ export function computeTimekeeperState(
     };
   }
 
-  const fasce = orarioOggi.fasce ?? [];
-  const isOpen = fasce.some((f) => isInFascia(currentMinutes, f));
-  const activeSlot = isOpen ? resolveActiveSlot(currentMinutes, fasce) : null;
+  const hours = orarioOggi.hours ?? [];
+  const isOpen = hours.some((f) => isInFascia(currentMinutes, f));
+  const activeSlot = isOpen
+    ? resolveActiveSlot(currentMinutes, hours, generali.lunchSlot, generali.dinnerSlot)
+    : null;
 
   return {
     now,
@@ -202,9 +222,6 @@ export function computeTimekeeperState(
  *
  * @param generali - Dati di orari ed eccezioni dal Global Payload "generali"
  * @returns Stato corrente: apertura, slot attivo, festività
- *
- * @example
- * const { isOpen, activeSlot } = useTimekeeper(generali);
  */
 export function useTimekeeper(generali: Generali): TimekeeperResult {
   const [now, setNow] = useState<Date>(() => new Date());

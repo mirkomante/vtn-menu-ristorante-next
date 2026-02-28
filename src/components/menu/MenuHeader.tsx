@@ -25,30 +25,34 @@ const SLOT_LABEL: Record<string, string> = {
   dinner: "Cena",
 };
 
+/** Mappa day inglese → abbreviazione italiana */
 const GIORNO_LABEL: Record<GiornoSettimana, string> = {
-  lunedi: "Lun",
-  martedi: "Mar",
-  mercoledi: "Mer",
-  giovedi: "Gio",
-  venerdi: "Ven",
-  sabato: "Sab",
-  domenica: "Dom",
+  monday:    "Lun",
+  tuesday:   "Mar",
+  wednesday: "Mer",
+  thursday:  "Gio",
+  friday:    "Ven",
+  saturday:  "Sab",
+  sunday:    "Dom",
 };
 
-/** Raggruppa i giorni con lo stesso orario per compattare la visualizzazione */
-function formatOrari(orari: OrarioGiorno[]): { giorni: string; fasce: string }[] {
+/**
+ * Raggruppa i giorni con lo stesso orario per compattare la visualizzazione.
+ * Usa la struttura reale del backend: scheduleWeekly con day/isOpen/hours[].
+ */
+function formatOrari(scheduleWeekly: OrarioGiorno[]): { giorni: string; fasce: string }[] {
   const result: { giorni: string; fasce: string }[] = [];
 
-  for (const orario of orari) {
-    const giornoLabel = GIORNO_LABEL[orario.giorno] ?? orario.giorno;
+  for (const orario of scheduleWeekly) {
+    const giornoLabel = GIORNO_LABEL[orario.day] ?? orario.day;
 
-    if (!orario.aperto || !orario.fasce || orario.fasce.length === 0) {
+    if (!orario.isOpen || !orario.hours || orario.hours.length === 0) {
       result.push({ giorni: giornoLabel, fasce: "Chiuso" });
       continue;
     }
 
-    const fasceStr = orario.fasce
-      .map((f) => `${f.apertura}–${f.chiusura}`)
+    const fasceStr = orario.hours
+      .map((f) => `${f.start}–${f.end}`)
       .join(", ");
 
     const last = result[result.length - 1];
@@ -75,7 +79,7 @@ export interface MenuHeaderProps {
 
 export function MenuHeader({ menuConfig, generali, status }: MenuHeaderProps) {
   const { isOpen, activeSlot, isHoliday, closureMessage } = status;
-  const orariFormatted = generali.orari ? formatOrari(generali.orari) : [];
+  const orariFormatted = generali.scheduleWeekly ? formatOrari(generali.scheduleWeekly) : [];
 
   return (
     <header className="bg-background py-10 border-b border-surface-dark/10">
