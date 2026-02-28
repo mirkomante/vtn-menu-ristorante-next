@@ -1,1 +1,91 @@
 @import "tailwindcss";
+
+/* ==========================================================================
+   TEMA "WARM & ELEGANT" — Vietnamonamour
+   Configurazione Tailwind v4 CSS-first via @theme.
+   Tutte le classi custom (bg-background, text-accent-gold, ecc.)
+   sono generate automaticamente da questi token.
+   ========================================================================== */
+
+@theme {
+  /* --------------------------------------------------------------------------
+     Font families
+     Referenziano le variabili CSS iniettate da next/font nel RootLayout.
+     Uso: font-serif (Philosopher, titoli) / font-sans (DM Sans, testi)
+     -------------------------------------------------------------------------- */
+  --font-family-serif: var(--font-philosopher), Georgia, serif;
+  --font-family-sans: var(--font-dm-sans), system-ui, sans-serif;
+
+  /* --------------------------------------------------------------------------
+     Palette colori semantica
+     -------------------------------------------------------------------------- */
+
+  /* Sfondi */
+  --color-background: #ffedd7;       /* Crema Chiaro — sfondo pagina */
+  --color-surface: #ffffff;          /* Bianco — card su sfondo crema */
+  --color-surface-dark: #460112;     /* Bordeaux Scuro — footer, header scuro */
+
+  /* Testi */
+  --color-text-main: #080f2c;        /* Blu Notte Profondo — testo principale */
+  --color-text-light: #ffedd7;       /* Crema — testo su sfondi scuri */
+  --color-text-muted: rgba(8, 15, 44, 0.7); /* Blu Notte 70% — testi secondari */
+
+  /* Accenti */
+  --color-accent-gold: #f8b624;      /* Oro — prezzi, icone, link */
+  --color-accent-orange: #ef5808;    /* Arancione Bruciato — badge, dettagli */
+
+  /* --------------------------------------------------------------------------
+     Border radius — mood leggermente morbido
+     -------------------------------------------------------------------------- */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-full: 9999px;
+
+  /* --------------------------------------------------------------------------
+     Ombre — colore blu notte a bassa opacità
+     -------------------------------------------------------------------------- */
+  --shadow-sm: 0 1px 3px rgba(8, 15, 44, 0.08), 0 1px 2px rgba(8, 15, 44, 0.04);
+  --shadow-md: 0 4px 6px rgba(8, 15, 44, 0.07), 0 2px 4px rgba(8, 15, 44, 0.05);
+  --shadow-lg: 0 10px 15px rgba(8, 15, 44, 0.08), 0 4px 6px rgba(8, 15, 44, 0.04);
+}
+
+/* ==========================================================================
+   RESET & BASE
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Scroll fluido per la navigazione tra sezioni */
+  scroll-behavior: smooth;
+  /* Previene zoom automatico su iOS quando si fa tap su input */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100svh;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text-main);
+  /* Migliora la resa dei font su macOS/iOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Immagini responsive di default */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Rimuove stili di default dai bottoni */
+button {
+  cursor: pointer;
+}

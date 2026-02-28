@@ -64,6 +64,9 @@ anche lato client (per `getRealTimeAvailability()`).
 
 ```
 src/
+app/
+│   └── fonts.ts            # Configurazione font Google (Philosopher + DM Sans)
+│
 ├── types/
 │   ├── payload-types.ts    # Interfacce che rispecchiano le collection/global di Payload
 │   ├── disponibilita.ts    # Interfaccia per il JSON di disponibilità GCS
@@ -79,10 +82,18 @@ src/
 ├── context/
 │   └── MenuContext.tsx     # Provider globale: incapsula hooks + disponibilità
 │
+├── components/
+│   └── ui/
+│       ├── Button.tsx      # Bottone con varianti primary/outline/ghost
+│       ├── Typography.tsx  # Heading (Philosopher) e Text (DM Sans)
+│       ├── Badge.tsx       # Etichette/tag con varianti
+│       ├── Container.tsx   # Wrapper centrato max-w-4xl
+│       └── index.ts        # Barrel export
+│
 app/
-├── layout.tsx              # Root layout (font, metadata globali)
+├── layout.tsx              # Root layout (font, metadata, classi base body)
 ├── page.tsx                # Homepage del menu
-└── globals.css             # Stili globali (solo direttiva @import tailwindcss)
+└── globals.css             # Tema Tailwind v4 (@theme) + reset CSS
 ```
 
 ---
@@ -143,6 +154,106 @@ const disponibilita = await getRealTimeAvailability();
 - Usa `cache: 'no-store'` per ottenere sempre i dati più freschi.
 - **Non lancia eccezioni**: restituisce `null` in caso di errore di rete.
 - Il chiamante deve gestire il caso `null` (es. mostrare tutto come disponibile).
+
+---
+
+## Design System — "Warm & Elegant"
+
+### Filosofia
+
+Il brand **Vietnamonamour** usa un mood caldo ed elegante: sfondo crema, testi blu notte profondi, accenti oro e arancio bruciato. Il sistema privilegia lo **stile Minimal**: i contenuti poggiano direttamente sullo sfondo crema, separati da bordi sottili arancioni. Le card bianche sono riservate a contesti specifici (es. modal, form).
+
+### 1. Palette Colori (Warm Theme)
+
+> Tailwind v4 — configurazione CSS-first in `app/globals.css` via `@theme`.
+> Non esiste `tailwind.config.ts`: i token sono definiti come `--color-*` nel blocco `@theme`.
+
+| Token            | Classe Tailwind       | HEX / RGBA              | Uso                                        |
+|------------------|-----------------------|-------------------------|--------------------------------------------|
+| `background`     | `bg-background`       | `#FFEDD7`               | Sfondo pagina — **sempre questo, mai white** |
+| `surface`        | `bg-surface`          | `#FFFFFF`               | Solo per modal, form, elementi sovrapposti |
+| `surface-dark`   | `bg-surface-dark`     | `#460112`               | Footer, header scuro, sezioni bordeaux     |
+| `text-main`      | `text-text-main`      | `#080F2C`               | Testo principale (blu notte profondo)      |
+| `text-light`     | `text-text-light`     | `#FFEDD7`               | Testo su sfondi scuri                      |
+| `text-muted`     | `text-text-muted`     | `rgba(8,15,44,0.7)`     | Descrizioni, note secondarie               |
+| `accent-gold`    | `text-accent-gold`    | `#F8B624`               | Prezzi, icone, link, separatori premium    |
+| `accent-orange`  | `bg-accent-orange`    | `#EF5808`               | Badge, separatori tra piatti               |
+
+### 2. Tipografia
+
+| Ruolo   | Font        | Classe Tailwind | Pesi caricati      | Uso                                  |
+|---------|-------------|-----------------|---------------------|--------------------------------------|
+| Titoli  | Philosopher | `font-serif`    | 400, 700            | Nomi piatti, titoli sezione, heading |
+| Testi   | DM Sans     | `font-sans`     | 300, 400, 500, 600, 700 | Descrizioni, prezzi, UI, nav     |
+
+Font caricati via `next/font/google` in `app/fonts.ts`, iniettati come variabili CSS (`--font-philosopher`, `--font-dm-sans`) nel `<body>` dal `RootLayout`.
+
+### 3. Componenti Core
+
+#### Atomi — importabili da `@/components/ui`
+
+```tsx
+import { Button, Heading, Text, Badge, Container } from "@/components/ui";
+```
+
+**`<Button>`** — rettangolare, padding ridotto (`py-1`, `py-1.5`, `py-2` per sm/md/lg):
+
+```tsx
+<Button variant="primary">Ordina</Button>         // Blu Notte → Crema
+<Button variant="outline">Vedi dettagli</Button>  // Bordo Blu Notte
+<Button variant="ghost" size="sm">Chiudi</Button> // Solo testo
+```
+
+**`<Heading>`** — sempre Philosopher, mai `font-serif` direttamente su HTML grezzo:
+
+```tsx
+<Heading level={2}>Antipasti</Heading>             // h2, text-main
+<Heading level={3} color="bordeaux">Phở Bò</Heading> // h3, surface-dark
+```
+
+**`<Text>`** — sempre DM Sans, mai `font-sans` direttamente su HTML grezzo:
+
+```tsx
+<Text variant="body" muted>Brodo di manzo 12 ore</Text>  // descrizione piatto
+<Text variant="body" className="text-accent-gold font-semibold">€ 14,00</Text> // prezzo
+```
+
+**`<Badge>`**:
+
+```tsx
+<Badge variant="default">Vegano</Badge>           // Blu Notte
+<Badge variant="highlight">Chef consiglia</Badge> // Arancione Bruciato
+<Badge variant="gold">Signature</Badge>           // Oro
+<Badge variant="outline">Contiene glutine</Badge> // Bordo
+```
+
+**`<Container>`**:
+
+```tsx
+<Container as="section">       // max-w-4xl, centrato, padding responsive
+<Container padding="tight">    // padding fisso px-4
+<Container padding="none">     // nessun padding
+```
+
+#### Pattern — DishCard (Stile Minimal — **stile di default**)
+
+Il pattern scelto per la lista piatti è **Minimal**: nessun sfondo, separatore inferiore arancio.
+
+```tsx
+<div className="border-b-2 border-accent-orange/30 py-4">
+  <div className="flex items-start justify-between gap-4">
+    <Heading level={3}>Phở Bò</Heading>
+    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 14</Text>
+  </div>
+  <Text variant="body" muted>Descrizione del piatto...</Text>
+  <div className="mt-3 flex flex-wrap gap-1.5">
+    <Badge variant="highlight">Chef consiglia</Badge>
+    <Badge variant="outline">Contiene glutine</Badge>
+  </div>
+</div>
+```
+
+> **Perché Minimal e non Card?** Il bianco su crema crea un contrasto di sfondo che appesantisce visivamente la pagina. Il Minimal mantiene il ritmo visivo fluido e valorizza la tipografia Philosopher.
 
 ---
 
@@ -238,6 +349,55 @@ import { MenuProvider } from "@/context/MenuContext";
 - `payload-types.ts` → strutture dati del CMS (piatti, vini, config, orari, sezioni).
 - `disponibilita.ts` → struttura del file JSON real-time su GCS.
 - Tipi derivati dagli hook (`ActiveSlot`, `SezioneRisolta`) sono in `payload-types.ts` nella sezione "Tipi derivati".
+
+### Design System — Regole di coerenza visiva
+
+> **Nota per agenti AI:** Quando crei nuovi componenti, usa **sempre** lo stile Minimal su sfondo Crema. Evita card bianche pesanti (`bg-surface` con `shadow`). Usa i bordi arancioni (`border-b-2 border-accent-orange/30`) per separare i contenuti. Le card bianche sono consentite solo per modal, form e overlay.
+
+**Stile di default per liste di contenuto (piatti, vini):**
+
+```tsx
+// ✅ CORRETTO — Minimal su crema
+<div className="border-b-2 border-accent-orange/30 py-4">
+  <Heading level={3}>Nome Piatto</Heading>
+  <Text variant="body" muted>Descrizione</Text>
+</div>
+
+// ❌ EVITARE — Card bianca su crema (appesantisce la pagina)
+<div className="rounded-md bg-surface p-4 shadow-sm">
+  ...
+</div>
+```
+
+**Tipografia — regole d'oro:**
+- Usa **sempre** `<Heading>` (Philosopher) per nomi piatti, titoli sezione, qualsiasi heading.
+- Usa **sempre** `<Text>` (DM Sans) per descrizioni, prezzi, note, testi UI.
+- Non usare mai `font-serif` o `font-sans` direttamente su HTML grezzo.
+
+**Colori — regole d'oro:**
+- Sfondo pagina: sempre `bg-background` (`#FFEDD7`). Non usare `bg-white` o `bg-gray-*`.
+- Testo principale: sempre `text-text-main`. Non usare `text-black` o `text-gray-900`.
+- Prezzi: sempre `text-accent-gold` con `font-semibold`.
+- Separatori tra piatti: `border-b-2 border-accent-orange/30`.
+- Sfondo scuro (footer, header): `bg-surface-dark` con `text-text-light`.
+- Su sfondo scuro: usa `text-text-light` (crema) o `text-accent-gold` (oro), **mai** `text-text-main`.
+
+**Componenti — mapping semantico:**
+
+| Elemento UI              | Componente / Classe                                      |
+|--------------------------|----------------------------------------------------------|
+| Nome piatto              | `<Heading level={3}>`                                    |
+| Titolo sezione menu      | `<Heading level={2}>`                                    |
+| Descrizione piatto       | `<Text variant="body" muted>`                            |
+| Prezzo                   | `<Text variant="body" className="text-accent-gold font-semibold">` |
+| Separatore tra piatti    | `border-b-2 border-accent-orange/30`                     |
+| Tag allergene/dieta      | `<Badge variant="outline">` o `variant="default"`        |
+| Badge prominente         | `<Badge variant="highlight">`                            |
+| Wrapper sezione          | `<Container as="section">`                               |
+| Bottone CTA principale   | `<Button variant="primary">`                             |
+
+**Tailwind v4 — nota critica:**
+Non esiste `tailwind.config.ts`. Tutta la configurazione del tema è in `app/globals.css` nel blocco `@theme`. Per aggiungere nuovi token colore o font, modificare solo quel file.
 
 ### Logica di Business — Come il sistema decide cosa mostrare
 
