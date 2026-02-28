@@ -258,8 +258,9 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 | `CategoryPage` | `src/components/menu/CategoryPage.tsx` | Client Component | Lista voci di una sezione virtuale con disponibilità real-time |
 | `MenuProvider` | `src/context/MenuContext.tsx` | Context Provider | Stato globale: sezioni, disponibilità, status |
 | `MenuHeader` | `src/components/menu/MenuHeader.tsx` | Client Component | Nome ristorante, orari settimanali, slot attivo, banner chiusura |
-| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, renderizza `DishCard` per ogni `MenuItem` |
-| `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Singola voce menu (`MenuItem`): nome, prezzo, badge dietetici/tipologia/allergeni |
+| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, smista `MenuItem[]` → `DishCard` e `MenuFisso[]` → `MenuFissoCard` |
+| `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Smart Component polimorfico per `MenuItem`: body variabile per `_type` (piatto/vino/birra/liquore/bevanda) |
+| `MenuFissoCard` | `src/components/menu/MenuFissoCard.tsx` | Server-compatible | Menu a prezzo fisso (`MenuFisso`): nome, prezzo, lista piatti inclusi, servizi aggiuntivi |
 | `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright |
 
 ## Struttura dei dati backend (PayloadCMS)
@@ -268,15 +269,25 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 
 ### Collection disponibili
 
-| Endpoint | Tipo TS | Note |
+| Endpoint | Tipo TS | Depth fetch | Note |
+|---|---|---|---|
+| `/api/piatti` | `Piatto` | — | `id` numerico, campi booleani dietetici, categoria embedded |
+| `/api/vini` | `Vino` | `depth=2` | `tipologia`, `nazione`, `regione` (con `regione.nazione`), `zona` popolati; `prezzoCalice` separato |
+| `/api/menu-fisso` | `MenuFisso` | `depth=2` | `categoria` embedded, array `piatti` e `servizi` popolati |
+| `/api/bevande` | `Bevanda` | `depth=1` | `tipologia` e `nazione` popolati |
+| `/api/birre` | `Birra` | `depth=1` | `tipologia` e `nazione` popolati; `grado`, `capacita` |
+| `/api/liquori` | `Liquore` | `depth=1` | `tipologia` e `nazione` popolati; `grado`, `capacita`, `invecchiamento` |
+| `/api/allergeni` | `Allergene` | — | `id` numerico, `nome`, `descrizione` |
+
+### Collection geografiche (relazioni)
+
+Usate come relazioni nei vini, birre, liquori e bevande. Non hanno endpoint diretto nel frontend — vengono popolate tramite `depth`.
+
+| Tipo TS | Usato da | Come si ottiene |
 |---|---|---|
-| `/api/piatti` | `Piatto` | `id` numerico, campi booleani dietetici, categoria embedded |
-| `/api/vini` | `Vino` | `id` numerico, `tipologia` embedded, `prezzoCalice` separato |
-| `/api/menu-fisso` | `MenuFisso` | `id` numerico, `categoria` embedded, array `piatti` e `servizi` |
-| `/api/bevande` | `Bevanda` | `id` numerico, `tipologia` embedded |
-| `/api/birre` | `Birra` | `id` numerico, `tipologia` embedded, `grado`, `capacita` |
-| `/api/liquori` | `Liquore` | `id` numerico, `tipologia` embedded, `grado`, `capacita`, `invecchiamento` |
-| `/api/allergeni` | `Allergene` | `id` numerico, `nome`, `descrizione` |
+| `Nazione` | `Vino`, `Birra`, `Liquore`, `Bevanda` | Popolata con `depth>=1` sulla collection principale |
+| `Regione` | `Vino` | Popolata con `depth>=1`; `regione.nazione` richiede `depth>=2` |
+| `Zona` | `Vino` | Popolata con `depth>=1` |
 
 ### Collection senza endpoint proprio
 
@@ -292,6 +303,7 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 | Endpoint | Tipo TS | Campo chiave | Note |
 |---|---|---|---|
 | `/api/globals/menu-config?depth=2` | `MenuConfig` | `standardItems[]` | **Richiede `?depth=2`** per popolare `targetCategories.value`. Senza `depth=2` restituisce `{}`. |
+| `/api/vini?depth=2` | `Vino` | `nazione`, `regione`, `zona` | `depth=2` necessario per `regione.nazione`. Con `depth=1` la nazione della regione è solo un id numerico. |
 | `/api/globals/generali?depth=2` | `Generali` | `scheduleWeekly[]` | Orari in inglese (`"monday"`, ecc.), `lunchSlot`/`dinnerSlot` espliciti |
 
 ### Struttura reale di `generali`

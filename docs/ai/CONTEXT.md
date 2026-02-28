@@ -71,9 +71,19 @@ type MenuItem =
 
 Il campo `_type` è aggiunto da `api.ts` (funzioni `piattoToItem`, `vinoToItem`, ecc.) — **non esiste nel backend**.
 
-`SezioneRisolta.items: MenuItem[]` è la lista unificata passata a `MenuSection` → `DishCard`. I menu fissi (pranzo, degustazione) hanno struttura diversa e usano `SezioneRisolta.menuFissi: MenuFisso[]`.
+`SezioneRisolta.items: MenuItem[]` è la lista unificata passata a `MenuSection` → `DishCard`. I menu fissi (pranzo, degustazione) hanno struttura diversa (`MenuFisso`) e vengono renderizzati con `MenuFissoCard` tramite `SezioneRisolta.menuFissi: MenuFisso[]`.
 
-**Regola:** `DishCard` e `MenuSection` accettano `MenuItem`, non `Piatto`. Non passare mai un `Piatto` grezzo — aggiungere `_type: "piatto"` prima.
+**Regola:** usa `MenuFissoCard` per i menu strutturati a prezzo fisso, `DishCard` polimorfica per tutto il resto (`MenuItem`). Non passare mai un `Piatto` grezzo a `DishCard` — aggiungere `_type: "piatto"` prima.
+
+**`DishCard` è polimorfica:** usa `item._type` per mostrare body diverso per tipo:
+- `piatto`: descrizione + badge dietetici (highlight) + allergeni (allergen) + prezzo alternativo
+- `vino`: descrizione + info tecnica (cantina, annata, grado) + badge tipologia/capacità + prezzo calice
+- `birra` / `liquore`: descrizione + info (grado, capacità, invecchiamento) + badge tipologia
+- `bevanda`: descrizione + badge tipologia
+
+**`MenuFissoCard`** mostra: nome + prezzo totale, descrizione (italic), lista piatti inclusi (rientrata), servizi aggiuntivi (badge). Richiede che `menu-fisso` sia fetchato con `?depth=2` per avere `piatti` e `servizi` popolati.
+
+**`MenuSection`** accetta sia `items: MenuItem[]` che `menuFissi: MenuFisso[]` e può gestirli contemporaneamente. I menu fissi vengono mostrati prima degli item sciolti. Se entrambi sono vuoti, restituisce `null`.
 
 ---
 
@@ -309,7 +319,7 @@ CategoryPage (Client)
             └─ <MenuFooter />
 ```
 
-**Regola:** `sezione.items` contiene già le voci filtrate dal Query Builder (logica multi-source additiva: ogni sorgente filtrata indipendentemente per `filterMode` + `targetCategories`, poi unite). `MenuSection` filtra ulteriormente per disponibilità real-time (solo `_type === "piatto"`). `DishCard` non sa nulla di disponibilità.
+**Regola:** `sezione.items` contiene già le voci filtrate dal Query Builder (logica multi-source additiva: ogni sorgente filtrata indipendentemente per `filterMode` + `targetCategories`, poi unite). `MenuSection` filtra ulteriormente per disponibilità real-time (solo `_type === "piatto"`). `DishCard` non sa nulla di disponibilità. `MenuFissoCard` non ha logica di disponibilità — i menu fissi sono sempre visibili.
 
 **Regola:** `MenuProvider` è presente in **entrambe** le pagine. È necessario anche nella pagina dettaglio per il polling della disponibilità real-time.
 

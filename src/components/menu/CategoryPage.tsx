@@ -5,9 +5,10 @@
  *
  * Riceve una SezioneRisolta (già risolta dal Query Builder a build-time) e:
  * 1. Inizializza MenuProvider per il polling della disponibilità real-time.
- * 2. Mostra il titolo della sezione e la lista items con DishCard (piatti, vini, bevande…).
+ * 2. Passa items e menuFissi a MenuSection, che smista i tipi:
+ *    - MenuFissoCard per i menu a prezzo fisso (in cima)
+ *    - DishCard per piatti, vini, bevande, birre, liquori
  * 3. Filtra automaticamente i piatti esauriti tramite MenuSection.
- * 4. Mostra i menu fissi (pranzo, degustazione) con layout dedicato.
  *
  * La sezione può contenere voci da più categorie (aggregazione virtuale)
  * o un sottoinsieme filtrato per inclusione/esclusione — tutto già risolto
@@ -16,7 +17,7 @@
 
 import Link from "next/link";
 import { useMenu, MenuProvider } from "@/context/MenuContext";
-import { Container, Heading, Text } from "@/components/ui";
+import { Container, Text } from "@/components/ui";
 import { MenuHeader } from "./MenuHeader";
 import { MenuFooter } from "./MenuFooter";
 import { MenuSection } from "./MenuSection";
@@ -77,8 +78,7 @@ function CategoryContent({ sezione }: CategoryContentProps) {
     slug: sezione.slug,
   };
 
-  const hasItems = sezione.items.length > 0;
-  const hasMenuFissi = sezione.menuFissi.length > 0;
+  const hasContent = sezione.items.length > 0 || sezione.menuFissi.length > 0;
 
   return (
     <>
@@ -87,53 +87,19 @@ function CategoryContent({ sezione }: CategoryContentProps) {
 
       <main className="min-h-screen bg-background">
         <Container as="div" className="py-8">
-          {!hasItems && !hasMenuFissi ? (
+          {!hasContent ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <Text variant="lead" muted>
                 Nessun contenuto disponibile in questa sezione.
               </Text>
             </div>
           ) : (
-            <>
-              {/* Voci generiche: piatti, vini, bevande, birre, liquori */}
-              {hasItems && (
-                <MenuSection
-                  categoria={categoriaVirtuale}
-                  items={sezione.items}
-                  availability={availability}
-                />
-              )}
-
-              {/* Menu a prezzo fisso (pranzo, degustazione) */}
-              {hasMenuFissi && (
-                <section className="py-10">
-                  <Heading level={2} color="bordeaux" className="mb-6">
-                    {sezione.titolo}
-                  </Heading>
-                  <div className="space-y-4">
-                    {sezione.menuFissi.map((mf) => (
-                      <div key={mf.id} className="rounded-lg border border-surface-dark/10 p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <Text variant="body" className="font-medium">
-                              {mf.nome}
-                            </Text>
-                            {mf.descrizione && (
-                              <Text variant="small" muted className="mt-1">
-                                {mf.descrizione}
-                              </Text>
-                            )}
-                          </div>
-                          <Text variant="body" className="shrink-0 font-medium">
-                            €{mf.prezzo.toFixed(2)}
-                          </Text>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </>
+            <MenuSection
+              categoria={categoriaVirtuale}
+              items={sezione.items}
+              menuFissi={sezione.menuFissi}
+              availability={availability}
+            />
           )}
         </Container>
       </main>

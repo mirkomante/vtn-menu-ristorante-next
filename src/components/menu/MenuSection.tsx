@@ -1,20 +1,22 @@
 /**
  * MenuSection — Componente di dominio per una sezione del menu.
  *
- * Raggruppa voci di menu (piatti, vini, bevande, ecc.) con titolo e lista DishCard.
- * Nessun bordo o sfondo esterno: layout completamente aperto sul crema.
+ * Accetta sia `items: MenuItem[]` (piatti, vini, bevande, birre, liquori)
+ * che `menuFissi: MenuFisso[]` (menu a prezzo fisso). Può gestire entrambi
+ * contemporaneamente: i menu fissi vengono mostrati prima, poi gli item sciolti.
  *
  * Logica disponibilità (solo per piatti):
  * - Piatti "esaurito" → rimossi dalla lista (invisibili).
  * - Piatti "nascosto"  → rimossi dalla lista (invisibili).
- * - Vini/bevande/liquori: sempre visibili (nessuna logica di disponibilità).
+ * - Vini/bevande/liquori/menu fissi: sempre visibili.
  * - Se dopo il filtro non rimane nessuna voce → restituisce null.
  */
 
 import { Container, Heading, Text } from "@/components/ui";
-import type { CategoriaMenu, MenuItem } from "@/types";
+import type { CategoriaMenu, MenuFisso, MenuItem } from "@/types";
 import type { DisponibilitaResponse } from "@/types/disponibilita";
 import { DishCard } from "./DishCard";
+import { MenuFissoCard } from "./MenuFissoCard";
 
 // ---------------------------------------------------------------------------
 // Tipi
@@ -22,7 +24,10 @@ import { DishCard } from "./DishCard";
 
 export interface MenuSectionProps {
   categoria: Pick<CategoriaMenu, "slug" | "nome" | "descrizione">;
-  items: MenuItem[];
+  /** Voci generiche: piatti, vini, bevande, birre, liquori */
+  items?: MenuItem[];
+  /** Menu a prezzo fisso (struttura diversa, renderizzati con MenuFissoCard) */
+  menuFissi?: MenuFisso[];
   /** Mappa disponibilità real-time da GCS. Se null, tutto è considerato disponibile. */
   availability?: DisponibilitaResponse | null;
   className?: string;
@@ -34,7 +39,8 @@ export interface MenuSectionProps {
 
 export function MenuSection({
   categoria,
-  items,
+  items = [],
+  menuFissi = [],
   availability = null,
   className = "",
 }: MenuSectionProps) {
@@ -48,7 +54,10 @@ export function MenuSection({
     return entry.stato === "disponibile";
   });
 
-  if (itemsVisibili.length === 0) return null;
+  const hasMenuFissi = menuFissi.length > 0;
+  const hasItems = itemsVisibili.length > 0;
+
+  if (!hasMenuFissi && !hasItems) return null;
 
   return (
     <section
@@ -74,12 +83,23 @@ export function MenuSection({
           )}
         </div>
 
-        {/* Lista voci visibili */}
-        <div className="flex flex-col">
-          {itemsVisibili.map((item) => (
-            <DishCard key={`${item._type}-${item.id}`} item={item} />
-          ))}
-        </div>
+        {/* Menu fissi (in cima, struttura dedicata) */}
+        {hasMenuFissi && (
+          <div className="flex flex-col">
+            {menuFissi.map((mf) => (
+              <MenuFissoCard key={`menu-fisso-${mf.id}`} menu={mf} />
+            ))}
+          </div>
+        )}
+
+        {/* Item sciolti: piatti, vini, bevande, birre, liquori */}
+        {hasItems && (
+          <div className={["flex flex-col", hasMenuFissi ? "mt-6" : ""].filter(Boolean).join(" ")}>
+            {itemsVisibili.map((item) => (
+              <DishCard key={`${item._type}-${item.id}`} item={item} />
+            ))}
+          </div>
+        )}
       </Container>
     </section>
   );

@@ -12,6 +12,8 @@
  *   - sourceCollection: array (es. ["piatti"], ["bevande", "birre"])
  * - generali: { scheduleWeekly[], lunchSlot, dinnerSlot, exceptions[] }
  * - piatti: id numerico, categoria embedded, campi booleani dietetici
+ * - vini: depth=2 per popolare tipologia, nazione, regione (con regione.nazione), zona
+ * - birre/bevande/liquori: depth=1 per popolare tipologia e nazione
  * - Categorie: NON hanno endpoint proprio — estratte dai piatti
  */
 
@@ -489,7 +491,7 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
   const [piatti, vini, menuFissi, bevande, birre, liquori, allergeni, menuConfigRaw, generaliRaw] =
     await Promise.all([
       fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
-      fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}' }),
+      fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}', depth: "2" }),
       fetchAllDocs<MenuFisso>("menu-fisso", { where: '{"inLista":{"equals":true}}', depth: "2" }),
       fetchAllDocs<Bevanda>("bevande", { where: '{"inLista":{"equals":true}}', depth: "1" }),
       fetchAllDocs<Birra>("birre", { where: '{"inLista":{"equals":true}}', depth: "1" }),

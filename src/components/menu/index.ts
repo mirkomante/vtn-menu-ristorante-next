@@ -1,6 +1,9 @@
 export { DishCard } from "./DishCard";
 export type { DishCardProps } from "./DishCard";
 
+export { MenuFissoCard } from "./MenuFissoCard";
+export type { MenuFissoCardProps } from "./MenuFissoCard";
+
 export { MenuSection } from "./MenuSection";
 export type { MenuSectionProps } from "./MenuSection";
 

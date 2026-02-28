@@ -151,23 +151,26 @@ Wrapper centrato `max-w-4xl` con padding responsive:
 
 ## 4. Pattern Componenti di Dominio
 
-### DishCard — Stile Minimal B2 (unico stile approvato)
+### DishCard — Smart Component Polimorfico (Stile Minimal B2)
 
-Il separatore è `border-b border-surface-dark/20` (bordeaux 20%, 1px). Nessun sfondo, nessuna shadow.
+`DishCard` accetta qualsiasi `MenuItem` e usa il campo `_type` per mostrare un body variabile per tipo. Il separatore è `border-b border-surface-dark/20` (bordeaux 20%, 1px). Nessun sfondo, nessuna shadow.
+
+**Header comune** (tutti i tipi): nome (`Heading level={3}`) + prezzo (`text-accent-gold font-bold`).
+
+**Body variabile per `_type`:**
+
+| `_type` | Contenuto body |
+|---|---|
+| `piatto` | Descrizione + Badge `highlight` (Vegan, Gluten Free, ecc.) + Badge `allergen` (allergeni) + prezzo alternativo |
+| `vino` | Descrizione + riga info tecnica (`Cantina · Annata · Grado°`) + Badge `default` (tipologia, capacità, certificazione) + prezzo calice |
+| `birra` | Descrizione + riga info (`Grado° · Capacità`) + Badge `default` (tipologia) |
+| `liquore` | Descrizione + riga info (`Grado° · Capacità · Invecchiamento`) + Badge `default` (tipologia) |
+| `bevanda` | Descrizione + Badge `default` (tipologia) |
 
 ```tsx
-// ✅ CORRETTO — stile B2 approvato
-<div className="border-b border-surface-dark/20 py-5">
-  <div className="flex items-start justify-between gap-4">
-    <Heading level={3}>Phở Bò</Heading>
-    <Text variant="body" as="span" className="font-bold text-accent-gold">€ 14,00</Text>
-  </div>
-  <Text variant="body" muted className="mt-1.5">Brodo di manzo 12 ore...</Text>
-  <div className="mt-3 flex flex-wrap gap-1.5">
-    <Badge variant="highlight">Gluten Free</Badge>
-    <Badge variant="allergen">Contiene sesamo</Badge>
-  </div>
-</div>
+// ✅ CORRETTO — DishCard polimorfica
+<DishCard item={item} />                    // item: MenuItem
+<DishCard item={item} isAvailable={false} /> // fail-safe: restituisce null
 ```
 
 **Stili scartati — non usare:**
@@ -177,6 +180,38 @@ Il separatore è `border-b border-surface-dark/20` (bordeaux 20%, 1px). Nessun s
 | A — Card bianca | `bg-surface rounded-md shadow-sm p-4` | Appesantisce la pagina, contrasta col mood minimal |
 | B1 — Bordo oro | `border-b border-accent-gold/20` | Poco visibile su sfondo crema |
 | B3 — Bordo arancione 2px | `border-b-2 border-accent-orange/30` | Troppo aggressivo, distrae dal contenuto |
+
+### MenuFissoCard — Menu a Prezzo Fisso (Stile Minimal B2)
+
+`MenuFissoCard` accetta un `MenuFisso` (struttura diversa da `MenuItem`) e lo renderizza con un layout dedicato. Stesso stile B2 di `DishCard`.
+
+**Layout:**
+1. Intestazione: nome (`Heading level={3}`) + prezzo totale (`text-accent-gold font-bold`)
+2. Descrizione (italic, `text-muted`)
+3. Lista piatti inclusi (rientrata con `border-l-2 border-surface-dark/20`)
+4. Servizi aggiuntivi (Badge `default`, es. "Coperto incluso")
+
+```tsx
+// ✅ CORRETTO
+<MenuFissoCard menu={menuFisso} />
+```
+
+**Nota:** se `piatti` o `servizi` contengono id numerici non popolati (depth < 2), vengono silenziosamente ignorati. Assicurarsi di fetchare `menu-fisso` con `?depth=2`.
+
+### MenuSection — Smistamento tipi
+
+`MenuSection` accetta sia `items: MenuItem[]` che `menuFissi: MenuFisso[]`. I menu fissi vengono renderizzati per primi (con `MenuFissoCard`), poi gli item sciolti (con `DishCard`).
+
+```tsx
+// ✅ Solo items
+<MenuSection categoria={cat} items={sezione.items} availability={availability} />
+
+// ✅ Solo menu fissi
+<MenuSection categoria={cat} menuFissi={sezione.menuFissi} />
+
+// ✅ Misto (raro): menu fissi in cima, poi item sciolti
+<MenuSection categoria={cat} items={sezione.items} menuFissi={sezione.menuFissi} availability={availability} />
+```
 
 ### Sezione menu — Layout aperto
 
@@ -237,14 +272,18 @@ Il footer usa `bg-text-main` (Blu Notte `#080F2C`). Il testo deve essere **esclu
 
 | Elemento UI | Componente / Classe |
 |---|---|
-| Nome piatto | `<Heading level={3}>` |
+| Nome piatto / voce menu | `<Heading level={3}>` |
 | Titolo sezione menu | `<Heading level={2} color="bordeaux">` |
 | Descrizione piatto | `<Text variant="body" muted>` |
-| Prezzo | `<Text variant="body" className="text-accent-gold font-semibold">` |
-| Separatore tra piatti | `border-b border-surface-dark/20` |
+| Info tecnica (cantina, grado, ecc.) | `<Text variant="small" muted>` |
+| Prezzo | `<Text variant="body" className="text-accent-gold font-bold">` |
+| Separatore tra voci | `border-b border-surface-dark/20` |
 | Tag dietetico (vantaggio) | `<Badge variant="highlight">` |
 | Tag allergene (avviso) | `<Badge variant="allergen">` |
-| Tag generico | `<Badge variant="default">` |
+| Tag generico (tipologia, capacità) | `<Badge variant="default">` |
+| Voce menu generica (piatto/vino/ecc.) | `<DishCard item={item} />` |
+| Menu a prezzo fisso | `<MenuFissoCard menu={mf} />` |
+| Sezione con voci miste | `<MenuSection items={...} menuFissi={...} />` |
 | Wrapper sezione | `<Container as="section">` |
 | Bottone CTA principale | `<Button variant="primary">` |
 | Testo su sfondo scuro | `text-text-light` o `text-accent-gold` |

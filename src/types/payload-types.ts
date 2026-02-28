@@ -120,6 +120,45 @@ export interface Piatto {
 }
 
 // ---------------------------------------------------------------------------
+// Collection: Dati geografici (Nazione, Regione, Zona)
+// ---------------------------------------------------------------------------
+
+/**
+ * Nazione di provenienza — collection "nazioni".
+ * Usata da vini, birre, liquori e bevande (depth>=1 per avere l'oggetto).
+ */
+export interface Nazione {
+  id: number;
+  nome: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Regione vinicola — collection "regioni".
+ * Usata dai vini (depth>=1 per avere l'oggetto, depth>=2 per avere nazione embedded).
+ */
+export interface Regione {
+  id: number;
+  nome: string;
+  /** Nazione della regione (popolata con depth>=2) */
+  nazione?: Nazione | number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Zona / denominazione vinicola — collection "zone".
+ * Usata dai vini (depth>=1 per avere l'oggetto).
+ */
+export interface Zona {
+  id: number;
+  nome: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
 // Collection: Vini
 // ---------------------------------------------------------------------------
 
@@ -132,6 +171,13 @@ export interface TipologiaVino {
   updatedAt: string;
 }
 
+/**
+ * Vino (collection "vini").
+ * Struttura reale del backend (verificata via API):
+ * - `tipologia`: oggetto embedded (depth>=1)
+ * - `nazione`, `regione`, `zona`: relazioni geografiche (popolate con depth>=1)
+ * - `regione.nazione` è popolata solo con depth>=2
+ */
 export interface Vino {
   id: number;
   nome: string;
@@ -146,6 +192,12 @@ export interface Vino {
   capacita?: string;
   grado?: string;
   certificazione?: string;
+  /** Nazione di provenienza (popolata con depth>=1) */
+  nazione?: Nazione | number | null;
+  /** Regione vinicola (popolata con depth>=1; regione.nazione con depth>=2) */
+  regione?: Regione | number | null;
+  /** Zona / denominazione (popolata con depth>=1) */
+  zona?: Zona | number | null;
   /** Se true il vino è visibile in lista */
   inLista: boolean;
   ordine?: number;
@@ -173,7 +225,7 @@ export interface TipologiaBevanda {
  * Bevanda (collection "bevande").
  * Struttura reale del backend (verificata via API):
  * - `tipologia`: oggetto embedded (depth>=1)
- * - `nazione`: id numerico (non popolato a depth=1)
+ * - `nazione`: oggetto Nazione (popolato con depth>=1)
  */
 export interface Bevanda {
   id: number;
@@ -181,7 +233,8 @@ export interface Bevanda {
   descrizione?: string;
   prezzo: number;
   tipologia: TipologiaBevanda | number;
-  nazione?: number | null;
+  /** Nazione di provenienza (popolata con depth>=1) */
+  nazione?: Nazione | number | null;
   inLista: boolean;
   ordine?: number;
   createdAt: string;
@@ -200,7 +253,8 @@ export interface Birra {
   tipologia: TipologiaBevanda | number;
   grado?: string;
   capacita?: string;
-  nazione?: number | null;
+  /** Nazione di provenienza (popolata con depth>=1) */
+  nazione?: Nazione | number | null;
   inLista: boolean;
   ordine?: number;
   createdAt: string;
@@ -220,7 +274,8 @@ export interface Liquore {
   grado?: string;
   capacita?: string;
   invecchiamento?: string;
-  nazione?: number | null;
+  /** Nazione di provenienza (popolata con depth>=1) */
+  nazione?: Nazione | number | null;
   inLista: boolean;
   ordine?: number;
   createdAt: string;
