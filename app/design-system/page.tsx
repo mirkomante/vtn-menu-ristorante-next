@@ -227,6 +227,53 @@ export default function DesignSystemPage() {
           ))}
         </div>
 
+        {/* Regole di contrasto */}
+        <div className="mt-8 flex flex-col gap-3">
+          <Heading level={3} className="mb-2">
+            Regole di Contrasto
+          </Heading>
+
+          {/* ✅ Combinazioni consentite */}
+          <Text variant="small" className="font-semibold uppercase tracking-widest text-text-muted">
+            ✅ Combinazioni consentite
+          </Text>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 rounded-md bg-background px-4 py-2 border border-text-main/10">
+              <span className="text-sm font-medium text-text-main">text-main</span>
+              <span className="text-xs text-text-muted">su bg-background</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md bg-surface px-4 py-2 border border-text-main/10">
+              <span className="text-sm font-medium text-text-main">text-main</span>
+              <span className="text-xs text-text-muted">su bg-surface</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2">
+              <span className="text-sm font-medium text-text-light">text-light</span>
+              <span className="text-xs text-text-light/60">su bg-surface-dark ✓</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2">
+              <span className="text-sm font-medium text-accent-gold">accent-gold</span>
+              <span className="text-xs text-text-light/60">su bg-surface-dark ✓</span>
+            </div>
+          </div>
+
+          {/* ❌ Combinazioni vietate */}
+          <Text variant="small" className="mt-2 font-semibold uppercase tracking-widest text-text-muted">
+            ❌ Combinazioni vietate
+          </Text>
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2 ring-2 ring-accent-orange">
+              <span className="text-sm font-medium text-text-main line-through opacity-60">
+                text-main
+              </span>
+              <span className="text-xs text-accent-orange font-semibold">su bg-surface-dark — VIETATO</span>
+            </div>
+          </div>
+          <Text variant="caption" className="text-accent-orange font-medium">
+            ⚠ text-main (#080F2C) su surface-dark (#460112): contrasto insufficiente — illeggibile.
+            surface-dark è riservato a footer/header con testo esclusivamente text-light o accent-gold.
+          </Text>
+        </div>
+
         {/* ------------------------------------------------------------------ */}
         {/* SEZIONE TIPOGRAFIA                                                  */}
         {/* ------------------------------------------------------------------ */}

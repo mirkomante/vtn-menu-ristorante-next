@@ -138,10 +138,14 @@ Possono rispondere con 500 se non ancora configurati nel CMS. `fetchGlobalSafe()
 
 - Sfondo pagina: **sempre** `bg-background` (`#FFEDD7`). Mai `bg-white`.
 - Separatore tra piatti: **sempre** `border-b border-surface-dark/20` (stile B2).
-- Su sfondo scuro: **sempre** `text-text-light` o `text-accent-gold`. Mai `text-text-main`.
 - Badge `allergen`: **solo** per allergeni. Badge `highlight`: per vantaggi dietetici e tag promozionali.
 - Usa `<Heading>` e `<Text>` — mai `font-serif`/`font-sans` su HTML grezzo.
 - Tema Tailwind: modifica **solo** `app/globals.css` nel blocco `@theme`.
+
+**⛔ Regola di contrasto critica:**
+`text-main` (#080F2C) su `surface-dark` (#460112) è **VIETATO** — contrasto insufficiente, illeggibile.
+`surface-dark` è riservato a footer/header/navbar e va usato **solo** con `text-text-light` o `text-accent-gold`.
+Non usare mai `surface-dark` come sfondo per sezioni di contenuto, card piatti o aree con testo principale.
 
 ---
 

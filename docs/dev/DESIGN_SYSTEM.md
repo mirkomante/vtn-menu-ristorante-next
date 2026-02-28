@@ -27,9 +27,26 @@ Il brand **Vietnamonamour** usa un mood caldo ed elegante: sfondo crema, testi b
 
 - Sfondo pagina: **sempre** `bg-background`. Non usare `bg-white` o `bg-gray-*`.
 - Testo principale: **sempre** `text-text-main`. Non usare `text-black` o `text-gray-900`.
-- Su sfondo scuro (`bg-surface-dark`): usa `text-text-light` o `text-accent-gold`, **mai** `text-text-main`.
 - Prezzi: **sempre** `text-accent-gold font-semibold`.
 - Separatori tra piatti: `border-b border-surface-dark/20` (Bordeaux 20%, 1px — stile B2).
+
+### ⛔ Regola di contrasto — VIETATO
+
+> **`text-main` (#080F2C) su `surface-dark` (#460112) è VIETATO.**
+> Il contrasto blu notte su bordeaux scuro è insufficiente e il testo risulta illeggibile.
+
+`surface-dark` può essere usato **esclusivamente** per elementi strutturali (footer, header, navbar) e **sempre** con testo `text-light` (#FFEDD7) o `accent-gold` (#F8B624).
+
+| Combinazione | Stato | Note |
+|---|---|---|
+| `text-main` su `bg-background` | ✅ Consentita | Uso standard per tutto il contenuto |
+| `text-main` su `bg-surface` | ✅ Consentita | Per modal, form, overlay |
+| `text-light` su `bg-surface-dark` | ✅ Consentita | Footer, header, navbar |
+| `accent-gold` su `bg-surface-dark` | ✅ Consentita | Prezzi, link, sezione attiva su sfondo scuro |
+| **`text-main` su `bg-surface-dark`** | ❌ **VIETATA** | Contrasto insufficiente — illeggibile |
+| `text-muted` su `bg-surface-dark` | ❌ **VIETATA** | Idem — tono su tono |
+
+`surface-dark` **non deve mai** essere usato come sfondo per sezioni di contenuto, card piatti o qualsiasi area che contenga testo principale del menu.
 
 ---
 
