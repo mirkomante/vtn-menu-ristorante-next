@@ -24,7 +24,7 @@ export interface ButtonProps
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-text-main text-text-light hover:bg-surface-dark focus-visible:ring-text-main",
+    "bg-text-main text-text-light hover:bg-text-main/85 focus-visible:ring-text-main",
   outline:
     "border border-text-main text-text-main bg-transparent hover:bg-text-main/5 focus-visible:ring-text-main",
   ghost:

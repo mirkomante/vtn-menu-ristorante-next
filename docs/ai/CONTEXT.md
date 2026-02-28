@@ -14,10 +14,27 @@ Un menu digitale statico per il ristorante **Vietnamonamour** (Milano). Il clien
 
 ---
 
+## Struttura del routing
+
+**La Home è un indice di navigazione, non un menu completo.**
+
+```
+/                    → HomeIndex: lista sezioni come card cliccabili
+/menu/[slug]         → CategoryPage: lista piatti di una categoria
+```
+
+L'utente scansiona il QR code → vede l'indice delle sezioni → clicca su una sezione → vede i piatti. Le sezioni fuori orario (es. "Pranzo" di sera) non compaiono nell'indice.
+
+`menu-config` (Global Payload) definisce l'ordine e la visibilità delle sezioni. Se non configurato, le sezioni vengono generate automaticamente dalle categorie dei piatti con `visibility: 'always'`.
+
 ## Mappa dei file chiave
 
 | File | Responsabilità | Quando modificarlo |
 |---|---|---|
+| `app/page.tsx` | Home Indice (Server Component) | Raramente — solo per il fallback di errore |
+| `app/menu/[slug]/page.tsx` | Pagina dettaglio categoria (Server Component) | Raramente — solo per il fallback di errore |
+| `src/components/menu/HomeIndex.tsx` | Client Component per la Home Indice | Quando cambia il layout dell'indice |
+| `src/components/menu/CategoryPage.tsx` | Client Component per la pagina dettaglio | Quando cambia il layout della pagina categoria |
 | `src/types/payload-types.ts` | Tipi TypeScript per Payload + tipi derivati | Quando cambia lo schema del backend |
 | `src/types/disponibilita.ts` | Tipo per il JSON GCS | Quando cambia la struttura del file di disponibilità |
 | `src/lib/api.ts` | Fetcher build-time + client-side | Quando cambiano gli endpoint o la logica di fallback |
@@ -25,7 +42,6 @@ Un menu digitale statico per il ristorante **Vietnamonamour** (Milano). Il clien
 | `src/hooks/useMenuStructure.ts` | Logica strutturale (sezioni visibili) | Quando cambia la logica di visibilità sezioni |
 | `src/context/MenuContext.tsx` | Stato globale client-side | Quando si aggiunge stato globale al menu |
 | `app/globals.css` | Tema Tailwind v4 (`@theme`) | Quando si aggiungono colori, font o token |
-| `app/page.tsx` | Entry point Server Component | Raramente — solo per cambiare il fallback di errore |
 
 ---
 
@@ -59,29 +75,52 @@ Tre livelli di decisione, eseguiti in sequenza:
 
 ## Relazioni tra i componenti
 
+### Home Indice (`/`)
+
 ```
 app/page.tsx (Server)
   └─ getStaticMenuData() → StaticMenuData
-  └─ <MenuOrchestrator staticData={...} />
+  └─ <HomeIndex staticData={...} />
 
-MenuOrchestrator (Client)
+HomeIndex (Client)
   └─ <MenuProvider menuConfig generali piatti vini>
        └─ useTimekeeper → status
-       └─ useMenuStructure → sections
+       └─ useMenuStructure → sections (filtrate per slot)
        └─ getRealTimeAvailability → availability
-       └─ <MenuContent>
-            ├─ <MenuHeader menuConfig generali status />
-            ├─ <StickyNav categorie activeSlug onCategoryChange />
+       └─ <IndexContent>
+            ├─ <MenuHeader />
             ├─ sections.map(sezione =>
-            │    <MenuSection categoria piatti availability />
-            │      └─ piattiVisibili.map(piatto =>
-            │           <DishCard piatto />
-            │         )
+            │    <SectionCard slug titolo numeroPiatti />
+            │      └─ <Link href="/menu/[slug]"> → naviga alla categoria
             │  )
-            └─ <MenuFooter menuConfig />
+            └─ <MenuFooter />
+```
+
+### Pagina Dettaglio (`/menu/[slug]`)
+
+```
+app/menu/[slug]/page.tsx (Server)
+  └─ generateStaticParams() → [{ slug: "antipasti" }, ...]
+  └─ getStaticMenuData() → StaticMenuData
+  └─ filtra piatti per categoria.id
+  └─ <CategoryPage staticData categoria piatti />
+
+CategoryPage (Client)
+  └─ <MenuProvider menuConfig generali piatti vini>
+       └─ getRealTimeAvailability → availability
+       └─ <CategoryContent>
+            ├─ <MenuHeader />
+            ├─ <BackButton /> → Link href="/"
+            ├─ <MenuSection categoria piatti availability />
+            │    └─ piattiVisibili.map(piatto =>
+            │         <DishCard piatto />
+            │       )
+            └─ <MenuFooter />
 ```
 
 **Regola:** `DishCard` non sa nulla di disponibilità — riceve solo piatti già filtrati. `MenuSection` è il guardiano che decide quali piatti passare.
+
+**Regola:** `MenuProvider` è presente in **entrambe** le pagine. È necessario anche nella pagina dettaglio per il polling della disponibilità real-time.
 
 ---
 
@@ -137,15 +176,25 @@ Possono rispondere con 500 se non ancora configurati nel CMS. `fetchGlobalSafe()
 ### Design System
 
 - Sfondo pagina: **sempre** `bg-background` (`#FFEDD7`). Mai `bg-white`.
-- Separatore tra piatti: **sempre** `border-b border-surface-dark/20` (stile B2).
+- **Liste piatti: usa sempre lo stile Minimal B2** — nessun sfondo, separatore `border-b border-surface-dark/20` (bordeaux 20%, 1px). Non usare card bianche (`bg-surface`), bordi oro (`border-accent-gold`) né bordi arancioni spessi (`border-b-2 border-accent-orange`).
 - Badge `allergen`: **solo** per allergeni. Badge `highlight`: per vantaggi dietetici e tag promozionali.
 - Usa `<Heading>` e `<Text>` — mai `font-serif`/`font-sans` su HTML grezzo.
 - Tema Tailwind: modifica **solo** `app/globals.css` nel blocco `@theme`.
+- Header: usa `bg-background` con `text-surface-dark` (bordeaux su crema). **Non usare `bg-surface-dark` per l'header.**
+- Footer: usa `bg-text-main` (Blu Notte) con `text-text-light` e `text-accent-gold` **esclusivamente**. **Non usare `bg-surface-dark`.**
+- `surface-dark` è **solo** un colore di testo (`text-surface-dark`) — mai uno sfondo.
 
-**⛔ Regola di contrasto critica:**
-`text-main` (#080F2C) su `surface-dark` (#460112) è **VIETATO** — contrasto insufficiente, illeggibile.
-`surface-dark` è riservato a footer/header/navbar e va usato **solo** con `text-text-light` o `text-accent-gold`.
-Non usare mai `surface-dark` come sfondo per sezioni di contenuto, card piatti o aree con testo principale.
+**⛔ Safety Check — Contrasto colori (OBBLIGATORIO prima di generare codice UI):**
+
+Prima di scrivere qualsiasi classe CSS/Tailwind, verifica sempre:
+
+| Se lo sfondo è... | Il testo DEVE essere... |
+|---|---|
+| `bg-text-main` (#080F2C) | `text-text-light` o `text-accent-gold` — MAI `text-text-main` |
+| `bg-background` (#FFEDD7) | `text-text-main`, `text-text-muted` o `text-surface-dark` |
+| `bg-surface` (#FFFFFF) | `text-text-main` o `text-text-muted` |
+
+**`surface-dark` (#460112) non viene mai usato come sfondo** (`bg-surface-dark`). È usato solo come colore di testo (`text-surface-dark`) per titoli bordeaux su crema. Footer e navbar usano `bg-text-main` (Blu Notte). Non usare mai `bg-surface-dark` in nessun componente.
 
 ---
 
@@ -160,6 +209,10 @@ Non usare mai `surface-dark` come sfondo per sezioni di contenuto, card piatti o
 ### Nuova sezione del menu
 
 Le sezioni sono configurate nel CMS (Global `menu-config`, campo `sezioni`). Non richiedono modifiche al codice frontend. Il campo `visibility` controlla quando la sezione è visibile (`lunch`/`dinner`/`always`).
+
+La nuova sezione comparirà automaticamente:
+1. Nell'indice Home come `SectionCard` cliccabile.
+2. Come pagina `/menu/[slug]` pre-renderizzata a build-time (grazie a `generateStaticParams`).
 
 ### Nuovo stato globale
 

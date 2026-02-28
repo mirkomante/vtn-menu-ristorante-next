@@ -8,10 +8,11 @@
  * - Link social (Instagram, Facebook) se configurati
  * - Copyright con anno dinamico
  *
- * Sfondo bordeaux (surface-dark), testi crema.
+ * Sfondo Blu Notte (bg-text-main), testi crema (text-text-light) e oro (text-accent-gold).
+ * NON usare text-text-main o text-text-muted su questo sfondo — contrasto insufficiente.
  */
 
-import { Container, Text } from "@/components/ui";
+import { Container } from "@/components/ui";
 import type { MenuConfig } from "@/types";
 
 export interface MenuFooterProps {
@@ -24,7 +25,7 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
   const hasContatti = menuConfig.indirizzo ?? menuConfig.telefono;
 
   return (
-    <footer className="bg-surface-dark py-10">
+    <footer className="bg-text-main py-10">
       <Container>
         <div className="flex flex-col items-center gap-4 text-center">
           {/* Nome */}
@@ -34,23 +35,23 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
 
           {/* Testo footer CMS */}
           {menuConfig.testoFooter && (
-            <Text variant="small" className="max-w-prose text-text-light/70">
+            <p className="max-w-prose font-sans text-sm text-text-light/70">
               {menuConfig.testoFooter}
-            </Text>
+            </p>
           )}
 
           {/* Indirizzo e telefono */}
           {hasContatti && (
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
               {menuConfig.indirizzo && (
-                <Text variant="small" className="text-text-light/60">
+                <span className="font-sans text-sm text-text-light/60">
                   {menuConfig.indirizzo}
-                </Text>
+                </span>
               )}
               {menuConfig.telefono && (
                 <a
                   href={`tel:${menuConfig.telefono.replace(/\s/g, "")}`}
-                  className="text-sm text-text-light/60 transition-colors hover:text-accent-gold"
+                  className="font-sans text-sm text-text-light/60 transition-colors hover:text-accent-gold"
                 >
                   {menuConfig.telefono}
                 </a>
@@ -67,7 +68,7 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram"
-                  className="text-sm font-medium text-text-light/60 transition-colors hover:text-accent-gold"
+                  className="font-sans text-sm font-medium text-text-light/60 transition-colors hover:text-accent-gold"
                 >
                   Instagram
                 </a>
@@ -78,7 +79,7 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook"
-                  className="text-sm font-medium text-text-light/60 transition-colors hover:text-accent-gold"
+                  className="font-sans text-sm font-medium text-text-light/60 transition-colors hover:text-accent-gold"
                 >
                   Facebook
                 </a>
@@ -87,9 +88,9 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
           )}
 
           {/* Copyright */}
-          <Text variant="caption" className="text-text-light/30">
+          <p className="font-sans text-xs text-text-light/30">
             © {year} {menuConfig.nomeRistorante}. Tutti i diritti riservati.
-          </Text>
+          </p>
         </div>
       </Container>
     </footer>

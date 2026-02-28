@@ -10,6 +10,12 @@ export type { StickyNavProps } from "./StickyNav";
 export { MenuOrchestrator } from "./MenuOrchestrator";
 export type { MenuOrchestratorProps } from "./MenuOrchestrator";
 
+export { HomeIndex } from "./HomeIndex";
+export type { HomeIndexProps } from "./HomeIndex";
+
+export { CategoryPage } from "./CategoryPage";
+export type { CategoryPageProps } from "./CategoryPage";
+
 export { MenuHeader } from "./MenuHeader";
 export type { MenuHeaderProps } from "./MenuHeader";
 

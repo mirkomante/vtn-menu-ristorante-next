@@ -1,14 +1,15 @@
 /**
  * MenuHeader — Intestazione del menu digitale.
  *
+ * Sfondo: bg-background (Crema #FFEDD7) → testi text-main (Blu Notte) e accent-gold.
+ * NON usa bg-surface-dark per evitare la combinazione vietata text-main/surface-dark.
+ *
  * Mostra:
- * - Nome del ristorante (Philosopher, grande)
- * - Messaggio di benvenuto (opzionale)
+ * - Nome del ristorante (Philosopher, grande, text-surface-dark = bordeaux)
+ * - Messaggio di benvenuto (opzionale, text-muted)
  * - Orari di apertura della settimana (da Generali)
  * - Indicatore slot attivo (pranzo/cena)
- * - Banner "Ristorante chiuso" quando applicabile (discreto, non blocca la consultazione)
- *
- * Sfondo bordeaux (surface-dark), testi crema/oro.
+ * - Banner "Ristorante chiuso" quando applicabile
  */
 
 import { Container, Text } from "@/components/ui";
@@ -50,10 +51,8 @@ function formatOrari(orari: OrarioGiorno[]): { giorni: string; fasce: string }[]
       .map((f) => `${f.apertura}–${f.chiusura}`)
       .join(", ");
 
-    // Prova a raggruppare con la voce precedente se stesso orario
     const last = result[result.length - 1];
     if (last && last.fasce === fasceStr && last.fasce !== "Chiuso") {
-      // Estendi il range giorni (es. "Lun–Mer")
       const parts = last.giorni.split("–");
       last.giorni = `${parts[0]}–${giornoLabel}`;
     } else {
@@ -79,17 +78,17 @@ export function MenuHeader({ menuConfig, generali, status }: MenuHeaderProps) {
   const orariFormatted = generali.orari ? formatOrari(generali.orari) : [];
 
   return (
-    <header className="bg-surface-dark py-10">
+    <header className="bg-background py-10 border-b border-surface-dark/10">
       <Container>
-        {/* Nome ristorante */}
+        {/* Nome ristorante — bordeaux su crema: contrasto eccellente */}
         <div className="text-center">
-          <p className="font-serif text-4xl font-bold tracking-tight text-text-light md:text-5xl">
+          <p className="font-serif text-4xl font-bold tracking-tight text-surface-dark md:text-5xl">
             {menuConfig.nomeRistorante}
           </p>
 
           {/* Messaggio di benvenuto */}
           {menuConfig.messaggioBenvenuto && (
-            <Text variant="body" className="mt-3 text-text-light/80">
+            <Text variant="body" muted className="mt-3">
               {menuConfig.messaggioBenvenuto}
             </Text>
           )}
@@ -107,20 +106,20 @@ export function MenuHeader({ menuConfig, generali, status }: MenuHeaderProps) {
 
         {/* Orari di apertura */}
         {orariFormatted.length > 0 && (
-          <div className="mt-8 border-t border-text-light/10 pt-6">
+          <div className="mt-8 border-t border-surface-dark/10 pt-6">
             <Text
               variant="small"
-              className="mb-3 text-center font-semibold uppercase tracking-widest text-accent-gold/80"
+              className="mb-3 text-center font-semibold uppercase tracking-widest text-text-muted"
             >
               Orari
             </Text>
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-1">
               {orariFormatted.map(({ giorni, fasce }) => (
                 <div key={giorni} className="flex items-baseline gap-1.5">
-                  <Text variant="small" className="font-semibold text-text-light">
+                  <Text variant="small" className="font-semibold text-text-main">
                     {giorni}
                   </Text>
-                  <Text variant="small" className="text-text-light/60">
+                  <Text variant="small" muted>
                     {fasce}
                   </Text>
                 </div>
@@ -130,13 +129,13 @@ export function MenuHeader({ menuConfig, generali, status }: MenuHeaderProps) {
         )}
       </Container>
 
-      {/* Banner chiusura — discreto, non blocca la consultazione del menu */}
+      {/* Banner chiusura */}
       {(!isOpen || isHoliday) && (
-        <div className="mt-6 border-t border-text-light/10">
+        <div className="mt-6 border-t border-surface-dark/10">
           <Container>
             <div className="flex items-center justify-center gap-2 pt-4">
               <span className="size-2 shrink-0 rounded-full bg-accent-orange" />
-              <Text variant="small" className="font-medium text-text-light/70">
+              <Text variant="small" className="font-medium text-text-muted">
                 {closureMessage ??
                   (isHoliday
                     ? "Oggi siamo chiusi per festività — puoi comunque consultare il menu"

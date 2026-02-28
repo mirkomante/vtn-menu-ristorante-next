@@ -21,41 +21,79 @@ Il progetto usa `output: 'export'` in `next.config.ts`. Questo produce una carte
 - I dati del menu sono "congelati" al momento della build.
 - La disponibilità real-time (esaurito/disponibile) è l'unica eccezione: viene fetchata lato client.
 
+## Routing
+
+Il sito usa un routing a due livelli:
+
+```
+/                    → Home Indice (lista sezioni cliccabili)
+/menu/[slug]         → Dettaglio categoria (lista piatti)
+
+Esempi:
+  /menu/antipasti
+  /menu/specialita-carne
+  /menu/vini
+```
+
+Tutte le pagine sono pre-renderizzate a build-time (SSG). `generateStaticParams` in `app/menu/[slug]/page.tsx` produce un parametro per ogni slug di categoria estratto dai piatti.
+
 ## Flusso dati completo
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  BUILD-TIME (pnpm build)                                        │
 │                                                                 │
-│  app/page.tsx (Server Component async)                          │
-│    └─ getStaticMenuData()  ──────────────────► PayloadCMS REST  │
-│         ├─ /api/piatti?where[inLista]=true                      │
-│         ├─ /api/vini?where[inLista]=true                        │
-│         ├─ /api/allergeni                                       │
-│         ├─ /api/globals/menu-config  (con fallback se 500)      │
-│         └─ /api/globals/generali    (con fallback se 500)       │
+│  app/page.tsx (Server Component)                                │
+│    └─ getStaticMenuData() ──────────────────► PayloadCMS REST   │
+│    └─ <HomeIndex staticData={...} />  → index.html              │
 │                                                                 │
+│  app/menu/[slug]/page.tsx (Server Component × N categorie)      │
+│    └─ generateStaticParams() → [{ slug: "antipasti" }, ...]     │
+│    └─ getStaticMenuData() (per ogni slug)                        │
+│    └─ <CategoryPage staticData categoria piatti /> → HTML       │
+│                                                                 │
+│  getStaticMenuData() chiama:                                    │
+│    ├─ /api/piatti?where[inLista]=true                           │
+│    ├─ /api/vini?where[inLista]=true                             │
+│    ├─ /api/allergeni                                            │
+│    ├─ /api/globals/menu-config  (con fallback se 500)           │
+│    └─ /api/globals/generali    (con fallback se 500)            │
 │    Categorie estratte dai piatti (nessun endpoint dedicato)     │
 │    Sezioni generate automaticamente se menu-config vuoto        │
-│                                                                 │
-│    └─ <MenuOrchestrator staticData={...} />  → HTML statico     │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼  Firebase Hosting (CDN)
 ┌─────────────────────────────────────────────────────────────────┐
 │  RUNTIME (browser)                                              │
 │                                                                 │
-│  MenuOrchestrator (Client Component)                            │
-│    └─ MenuProvider                                              │
+│  HomeIndex / CategoryPage (Client Component)                    │
+│    └─ MenuProvider (presente in entrambe le pagine)             │
 │         ├─ useTimekeeper(generali)   [tick 30s]                 │
 │         │    └─ isOpen, activeSlot, isHoliday                   │
 │         ├─ useMenuStructure(...)     [memo su slot/config]      │
-│         │    └─ sections: SezioneRisolta[]                      │
+│         │    └─ sections: SezioneRisolta[] (filtrate per slot)  │
 │         └─ getRealTimeAvailability() [polling 5min]             │
 │              └─ availability: DisponibilitaResponse | null      │
 │                   └─ Google Cloud Storage (disponibilita.json)  │
+│                                                                 │
+│  Home: mostra sezioni come card → Link href="/menu/[slug]"      │
+│  Dettaglio: mostra piatti della categoria con DishCard          │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Responsabilità dei componenti principali
+
+| Componente | File | Tipo | Responsabilità |
+|---|---|---|---|
+| `app/page.tsx` | `app/page.tsx` | Server Component | Fetch build-time, passa `staticData` a `HomeIndex` |
+| `app/menu/[slug]/page.tsx` | `app/menu/[slug]/page.tsx` | Server Component | `generateStaticParams`, filtra piatti per slug, passa a `CategoryPage` |
+| `HomeIndex` | `src/components/menu/HomeIndex.tsx` | Client Component | Indice sezioni: card cliccabili filtrate per slot/orario |
+| `CategoryPage` | `src/components/menu/CategoryPage.tsx` | Client Component | Lista piatti di una categoria con disponibilità real-time |
+| `MenuProvider` | `src/context/MenuContext.tsx` | Context Provider | Stato globale: sezioni, disponibilità, status, navigazione |
+| `MenuHeader` | `src/components/menu/MenuHeader.tsx` | Client Component | Nome ristorante, orari, slot attivo, banner chiusura |
+| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, renderizza `DishCard` |
+| `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Singolo piatto con badge dietetici e allergeni |
+| `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright |
 
 ## Struttura dei dati backend (PayloadCMS)
 

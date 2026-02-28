@@ -1,7 +1,10 @@
 /**
  * Pagina di preview del Design System — solo per sviluppo.
  * Accessibile a /design-system.
- * Mostra palette, tipografia, bottoni e badge del tema "Warm & Elegant".
+ *
+ * REGOLA: questa pagina mostra SOLO pattern approvati.
+ * Nessun esempio di codice "scartato" o "da evitare" nel markup —
+ * solo la sezione "Contrasto" mostra esplicitamente cosa NON fare.
  */
 
 import { Badge, Button, Container, Heading, Text } from "@/components/ui";
@@ -84,7 +87,7 @@ const palette = [
 // ---------------------------------------------------------------------------
 
 const DUMMY_CATEGORIA: CategoriaMenu = {
-  id: "cat-1",
+  id: 1,
   nome: "Antipasti",
   slug: "antipasti",
   descrizione: "Piccoli assaggi per iniziare il pasto nel segno della freschezza.",
@@ -95,65 +98,78 @@ const DUMMY_CATEGORIA: CategoriaMenu = {
 
 const DUMMY_PIATTI: Piatto[] = [
   {
-    id: "piatto-1",
+    id: 1,
     nome: "Phở Bò",
     slug: "pho-bo",
-    tipo: "cibo",
     descrizione:
       "Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie (anice stellato, cannella, cardamomo).",
     prezzo: 14,
-    categoria: "cat-1",
-    allergeni: [{ id: "a1", nome: "Glutine", createdAt: "", updatedAt: "" }],
-    tag: ["chef consiglia"],
-    attivo: true,
+    categoria: 1,
+    allergeni: [{ id: 1, nome: "Glutine", createdAt: "", updatedAt: "" }],
+    inLista: true,
+    soloMenuFissi: false,
+    glutenFree: false,
+    noUovo: false,
+    noLatticini: false,
+    vegan: false,
     createdAt: "",
     updatedAt: "",
   },
   {
-    id: "piatto-2",
+    id: 2,
     nome: "Gỏi Cuốn",
     slug: "goi-cuon",
-    tipo: "cibo",
     descrizione:
       "Involtini freschi in carta di riso con gamberi, maiale, vermicelli e erbe. Serviti con salsa di arachidi.",
     prezzo: 8,
     prezzoAlternativo: 14,
     etichettaPrezzoAlternativo: "2 pz",
-    categoria: "cat-1",
+    categoria: 1,
     allergeni: [
-      { id: "a2", nome: "Arachidi", createdAt: "", updatedAt: "" },
-      { id: "a3", nome: "Crostacei", createdAt: "", updatedAt: "" },
+      { id: 2, nome: "Arachidi", createdAt: "", updatedAt: "" },
+      { id: 3, nome: "Crostacei", createdAt: "", updatedAt: "" },
     ],
-    tag: ["vegano"],
-    attivo: true,
+    inLista: true,
+    soloMenuFissi: false,
+    glutenFree: false,
+    noUovo: true,
+    noLatticini: true,
+    vegan: true,
     createdAt: "",
     updatedAt: "",
   },
   {
-    id: "piatto-3",
+    id: 3,
     nome: "Chả Giò",
     slug: "cha-gio",
-    tipo: "cibo",
     descrizione:
       "Involtini croccanti fritti ripieni di maiale, funghi e vermicelli. Serviti con salsa nước chấm.",
     prezzo: 9,
-    categoria: "cat-1",
-    allergeni: [{ id: "a1", nome: "Glutine", createdAt: "", updatedAt: "" }],
-    tag: ["piccante"],
-    attivo: true,
+    categoria: 1,
+    allergeni: [{ id: 1, nome: "Glutine", createdAt: "", updatedAt: "" }],
+    inLista: true,
+    soloMenuFissi: false,
+    glutenFree: false,
+    noUovo: false,
+    noLatticini: false,
+    vegan: false,
     createdAt: "",
     updatedAt: "",
   },
   {
-    id: "piatto-4",
+    id: 4,
     nome: "Bún Bò Huế",
     slug: "bun-bo-hue",
-    tipo: "cibo",
     descrizione:
       "Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.",
     prezzo: 15,
-    categoria: "cat-1",
-    attivo: true,
+    categoria: 1,
+    inLista: true,
+    soloMenuFissi: false,
+    glutenFree: true,
+    noUovo: false,
+    noLatticini: false,
+    vegan: false,
     createdAt: "",
     updatedAt: "",
   },
@@ -162,7 +178,7 @@ const DUMMY_PIATTI: Piatto[] = [
 const DUMMY_AVAILABILITY = {
   aggiornatoAl: new Date().toISOString(),
   piatti: {
-    "piatto-3": { id: "piatto-3", stato: "esaurito" as const },
+    3: { id: 3, stato: "esaurito" as const },
   },
   vini: {},
 };
@@ -235,42 +251,53 @@ export default function DesignSystemPage() {
 
           {/* ✅ Combinazioni consentite */}
           <Text variant="small" className="font-semibold uppercase tracking-widest text-text-muted">
-            ✅ Combinazioni consentite
+            ✅ Consentite
           </Text>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2 rounded-md bg-background px-4 py-2 border border-text-main/10">
               <span className="text-sm font-medium text-text-main">text-main</span>
               <span className="text-xs text-text-muted">su bg-background</span>
             </div>
+            <div className="flex items-center gap-2 rounded-md bg-background px-4 py-2 border border-text-main/10">
+              <span className="text-sm font-medium text-surface-dark">text-surface-dark</span>
+              <span className="text-xs text-text-muted">su bg-background (titoli)</span>
+            </div>
             <div className="flex items-center gap-2 rounded-md bg-surface px-4 py-2 border border-text-main/10">
               <span className="text-sm font-medium text-text-main">text-main</span>
               <span className="text-xs text-text-muted">su bg-surface</span>
             </div>
-            <div className="flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2">
+            <div className="flex items-center gap-2 rounded-md bg-text-main px-4 py-2">
               <span className="text-sm font-medium text-text-light">text-light</span>
-              <span className="text-xs text-text-light/60">su bg-surface-dark ✓</span>
+              <span className="text-xs text-text-light/60">su bg-text-main ✓ (footer/navbar)</span>
             </div>
-            <div className="flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2">
+            <div className="flex items-center gap-2 rounded-md bg-text-main px-4 py-2">
               <span className="text-sm font-medium text-accent-gold">accent-gold</span>
-              <span className="text-xs text-text-light/60">su bg-surface-dark ✓</span>
+              <span className="text-xs text-text-light/60">su bg-text-main ✓</span>
             </div>
           </div>
 
           {/* ❌ Combinazioni vietate */}
           <Text variant="small" className="mt-2 font-semibold uppercase tracking-widest text-text-muted">
-            ❌ Combinazioni vietate
+            ❌ Vietate — non copiare questo codice
           </Text>
           <div className="flex flex-wrap gap-3">
-            <div className="relative flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2 ring-2 ring-accent-orange">
-              <span className="text-sm font-medium text-text-main line-through opacity-60">
+            <div className="relative flex items-center gap-2 rounded-md bg-text-main px-4 py-2 ring-2 ring-accent-orange">
+              <span className="text-sm font-medium text-text-main line-through opacity-50">
                 text-main
               </span>
-              <span className="text-xs text-accent-orange font-semibold">su bg-surface-dark — VIETATO</span>
+              <span className="text-xs font-semibold text-accent-orange">su bg-text-main — VIETATO</span>
+            </div>
+            <div className="relative flex items-center gap-2 rounded-md bg-surface-dark px-4 py-2 ring-2 ring-accent-orange">
+              <span className="text-sm font-medium text-text-main line-through opacity-50">
+                text-main
+              </span>
+              <span className="text-xs font-semibold text-accent-orange">su bg-surface-dark — VIETATO</span>
             </div>
           </div>
-          <Text variant="caption" className="text-accent-orange font-medium">
-            ⚠ text-main (#080F2C) su surface-dark (#460112): contrasto insufficiente — illeggibile.
-            surface-dark è riservato a footer/header con testo esclusivamente text-light o accent-gold.
+          <Text variant="caption" className="font-medium text-accent-orange">
+            ⚠ Sfondo scuro → testo SEMPRE chiaro (text-light o accent-gold).
+            Sfondo chiaro → testo SEMPRE scuro (text-main, text-muted, text-surface-dark).
+            surface-dark è riservato a footer e navbar sticky — mai per header o contenuto.
           </Text>
         </div>
 
@@ -298,19 +325,16 @@ export default function DesignSystemPage() {
             <Heading level={4}>Ingredienti e Allergeni</Heading>
           </div>
           <div className="flex items-baseline gap-3">
-            <Badge variant="outline">h3 bordeaux</Badge>
-            <Heading level={3} color="bordeaux">
-              Sezione Speciale
+            <Badge variant="outline">h2 bordeaux</Badge>
+            <Heading level={2} color="bordeaux">
+              Antipasti
             </Heading>
           </div>
         </div>
 
-        {/* Text — DM Sans su sfondo crema (bg-background, senza card) */}
+        {/* Text — DM Sans su bg-background (unico sfondo consentito per il menu) */}
         <div className="mb-2 flex items-center gap-2">
-          <Badge variant="gold">su bg-background</Badge>
-          <Text variant="caption" muted className="font-medium">
-            testo direttamente sul crema, senza card
-          </Text>
+          <Badge variant="gold">su bg-background — stile approvato</Badge>
         </div>
         <div className="mb-6 flex flex-col gap-3 px-1">
           <Text variant="lead">
@@ -324,68 +348,15 @@ export default function DesignSystemPage() {
           <Text variant="body" muted>
             Contiene: glutine, soia. Può contenere tracce di arachidi.
           </Text>
-        </div>
-
-        {/* Text — DM Sans su bg-surface (card bianca) */}
-        <div className="mb-2 flex items-center gap-2">
-          <Badge variant="outline">su bg-surface</Badge>
-          <Text variant="caption" muted className="font-medium">
-            stessa tipografia su card bianca
+          <Text variant="body" className="font-semibold text-accent-gold">
+            € 14,00
           </Text>
-        </div>
-        <div className="flex flex-col gap-4 rounded-md border border-text-main/10 bg-surface p-6">
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-1 shrink-0">
-              lead
-            </Badge>
-            <Text variant="lead">
-              Zuppa tradizionale vietnamita con brodo di manzo cotto 12 ore,
-              noodles di riso, fettine di manzo e spezie aromatiche.
-            </Text>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5 shrink-0">
-              body
-            </Badge>
-            <Text variant="body">
-              Servito con germogli di soia freschi, foglie di basilico thai,
-              lime e peperoncino. Personalizzabile su richiesta.
-            </Text>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5 shrink-0">
-              body muted
-            </Badge>
-            <Text variant="body" muted>
-              Contiene: glutine, soia. Può contenere tracce di arachidi.
-            </Text>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5 shrink-0">
-              small
-            </Badge>
-            <Text variant="small" className="font-medium">
-              Disponibile a pranzo e cena. Porzione singola.
-            </Text>
-          </div>
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5 shrink-0">
-              caption
-            </Badge>
-            <Text variant="caption" muted className="font-medium">
-              * I prezzi includono IVA. Informare il personale di eventuali
-              allergie.
-            </Text>
-          </div>
-          {/* Prezzo con accent-gold */}
-          <div className="flex items-start gap-3">
-            <Badge variant="outline" className="mt-0.5 shrink-0">
-              prezzo
-            </Badge>
-            <Text variant="body" className="font-medium text-accent-gold">
-              € 14,00
-            </Text>
-          </div>
+          <Text variant="small" muted>
+            Disponibile a pranzo e cena. Porzione singola.
+          </Text>
+          <Text variant="caption" muted>
+            * I prezzi includono IVA. Informare il personale di eventuali allergie.
+          </Text>
         </div>
 
         {/* ------------------------------------------------------------------ */}
@@ -393,7 +364,7 @@ export default function DesignSystemPage() {
         {/* ------------------------------------------------------------------ */}
         <SectionDivider title="Bottoni" />
 
-        {/* Varianti */}
+        {/* Varianti su sfondo crema (uso standard) */}
         <div className="mb-6 flex flex-col gap-6">
           {(["primary", "outline", "ghost"] as const).map((variant) => (
             <div key={variant} className="flex flex-wrap items-center gap-4">
@@ -419,20 +390,17 @@ export default function DesignSystemPage() {
           ))}
         </div>
 
-        {/* Bottoni su sfondo scuro */}
-        <div className="flex flex-wrap items-center gap-4 rounded-md bg-surface-dark p-6">
-          <Text variant="small" className="w-full font-medium text-text-light">
-            Su sfondo scuro (surface-dark) — usa text-light o accent-gold, mai text-main:
-          </Text>
-          {/* Gold su scuro: massimo contrasto, CTA principale */}
+        {/* Bottoni su sfondo scuro — footer/navbar usa bg-text-main (Blu Notte) */}
+        <div className="flex flex-wrap items-center gap-4 rounded-md bg-text-main p-6">
+          <p className="w-full font-sans text-sm font-medium text-text-light">
+            Su sfondo scuro (footer/navbar — bg-text-main) — testo SEMPRE text-light o accent-gold:
+          </p>
           <button className="inline-flex items-center justify-center rounded-md bg-accent-gold px-5 py-1.5 font-sans text-base font-medium text-text-main transition-colors hover:bg-accent-gold/90">
             Prenota un tavolo
           </button>
-          {/* Outline crema su scuro: azione secondaria */}
           <button className="inline-flex items-center justify-center rounded-md border border-text-light px-5 py-1.5 font-sans text-base font-medium text-text-light transition-colors hover:bg-text-light/10">
             Scopri il menu
           </button>
-          {/* Ghost crema su scuro: azione terziaria/link */}
           <button className="inline-flex items-center justify-center rounded-md px-5 py-1.5 font-sans text-base font-medium text-text-light transition-colors hover:bg-text-light/10">
             Torna su
           </button>
@@ -444,181 +412,156 @@ export default function DesignSystemPage() {
         <SectionDivider title="Badge" />
 
         <div className="flex flex-col gap-6">
-          {/* Varianti */}
-          <div className="flex flex-wrap gap-3">
-            <Badge variant="default">Vegano</Badge>
-            <Badge variant="default">Piccante</Badge>
-            <Badge variant="default">Senza glutine</Badge>
-            <Badge variant="highlight">Chef consiglia</Badge>
-            <Badge variant="highlight">Novità</Badge>
-            <Badge variant="highlight">Esaurito</Badge>
-            <Badge variant="gold">Signature</Badge>
-            <Badge variant="gold">Stagionale</Badge>
-            <Badge variant="outline">Contiene glutine</Badge>
-            <Badge variant="outline">Contiene lattosio</Badge>
-          </div>
-
-          {/* Esempio contestuale: card piatto */}
-          <div className="rounded-md border border-text-main/10 bg-surface p-5">
-            <div className="mb-1 flex items-start justify-between gap-4">
-              <Heading level={3}>Phở Bò Đặc Biệt</Heading>
-              <Text variant="body" className="shrink-0 font-semibold text-accent-gold">
-                € 16,00
-              </Text>
-            </div>
-            <Text variant="body" muted className="mb-3">
-              Versione speciale con filetto di manzo, tendine e polpette.
-              Brodo di manzo cotto 24 ore.
+          {/* Tutte le varianti */}
+          <div>
+            <Text variant="small" muted className="mb-3 font-medium">
+              Varianti disponibili
             </Text>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
+              <Badge variant="default">Tag neutro</Badge>
+              <Badge variant="default">Piccante</Badge>
+              <Badge variant="highlight">Vegan</Badge>
+              <Badge variant="highlight">Gluten Free</Badge>
               <Badge variant="highlight">Chef consiglia</Badge>
               <Badge variant="gold">Signature</Badge>
-              <Badge variant="outline">Contiene glutine</Badge>
-              <Badge variant="default">Piccante</Badge>
+              <Badge variant="gold">Stagionale</Badge>
+              <Badge variant="outline">Tag outline</Badge>
+              <Badge variant="allergen">Contiene glutine</Badge>
+              <Badge variant="allergen">Contiene arachidi</Badge>
+            </div>
+          </div>
+
+          {/* Regola semantica */}
+          <div className="rounded-md border border-text-main/10 bg-surface p-4">
+            <Text variant="small" className="mb-2 font-semibold text-text-main">
+              Regola semantica badge:
+            </Text>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Badge variant="allergen">Contiene glutine</Badge>
+                <Text variant="caption" muted>→ <code>allergen</code> — SOLO per allergeni (avvisi)</Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="highlight">Vegan</Badge>
+                <Text variant="caption" muted>→ <code>highlight</code> — vantaggi dietetici e tag promozionali</Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="default">Piccante</Badge>
+                <Text variant="caption" muted>→ <code>default</code> — tag informativi neutri</Text>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="gold">Signature</Badge>
+                <Text variant="caption" muted>→ <code>gold</code> — badge premium/speciali</Text>
+              </div>
+            </div>
+          </div>
+
+          {/* Esempio contestuale: piatto con badge — stile Minimal B2 */}
+          <div>
+            <Text variant="small" muted className="mb-3 font-medium">
+              Badge in contesto (stile Minimal B2 approvato)
+            </Text>
+            <div className="border-b border-surface-dark/20 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <Heading level={3}>Phở Bò Đặc Biệt</Heading>
+                <Text variant="body" as="span" className="shrink-0 font-bold text-accent-gold">
+                  € 16,00
+                </Text>
+              </div>
+              <Text variant="body" muted className="mt-1.5">
+                Versione speciale con filetto di manzo, tendine e polpette.
+                Brodo di manzo cotto 24 ore.
+              </Text>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant="highlight">Chef consiglia</Badge>
+                <Badge variant="gold">Signature</Badge>
+                <Badge variant="allergen">Contiene glutine</Badge>
+              </div>
             </div>
           </div>
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* SEZIONE MENU EXAMPLE                                               */}
+        {/* SEZIONE MENU EXAMPLE — SOLO STILE APPROVATO                        */}
         {/* ------------------------------------------------------------------ */}
-        <SectionDivider title="Menu Example (Test Leggibilità)" />
+        <SectionDivider title="Stile Lista Piatti — Minimal B2 (approvato)" />
 
-        <Text variant="body" muted className="mb-8">
-          Confronto tra due stili di presentazione dei piatti sullo stesso
-          sfondo crema. Valuta quale risulta più leggibile e coerente col brand.
+        <Text variant="body" muted className="mb-2">
+          Unico stile approvato per la lista piatti: nessun sfondo, separatore bordeaux 20% 1px.
+        </Text>
+        <Text variant="caption" className="mb-8 font-medium text-accent-orange">
+          ⚠ Non usare card bianche (bg-surface) né bordi arancioni spessi (border-b-2 border-accent-orange).
         </Text>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-
-          {/* ---- Colonna 1: Stile Card ---- */}
-          <div>
-            <div className="mb-4 flex items-center gap-2">
-              <Badge variant="default">Stile A</Badge>
-              <Text variant="small" className="font-medium">Card su crema</Text>
-            </div>
-            <div className="flex flex-col gap-3">
-
-              <div className="rounded-md bg-surface p-4 shadow-sm">
-                <div className="mb-1 flex items-start justify-between gap-4">
-                  <Heading level={3}>Phở Bò</Heading>
-                  <Text variant="body" className="shrink-0 font-semibold text-accent-gold">
-                    € 14
-                  </Text>
-                </div>
-                <Text variant="body" muted>
-                  Zuppa tradizionale di manzo con noodles di riso, erbe
-                  aromatiche e spezie (anice stellato, cannella, cardamomo).
-                </Text>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <Badge variant="outline">Contiene glutine</Badge>
-                  <Badge variant="default">Piccante</Badge>
-                </div>
-              </div>
-
-              <div className="rounded-md bg-surface p-4 shadow-sm">
-                <div className="mb-1 flex items-start justify-between gap-4">
-                  <Heading level={3}>Gỏi Cuốn</Heading>
-                  <Text variant="body" className="shrink-0 font-semibold text-accent-gold">
-                    € 8
-                  </Text>
-                </div>
-                <Text variant="body" muted>
-                  Involtini freschi in carta di riso con gamberi, maiale,
-                  vermicelli e erbe. Serviti con salsa di arachidi.
-                </Text>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  <Badge variant="highlight">Chef consiglia</Badge>
-                  <Badge variant="outline">Contiene arachidi</Badge>
-                </div>
-              </div>
-
-            </div>
+        {/* Stile Minimal B2 — l'unico approvato */}
+        <div className="max-w-2xl">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge variant="highlight">✓ Approvato</Badge>
+            <Text variant="small" className="font-medium">
+              Minimal B2 —{" "}
+              <code className="rounded bg-text-main/8 px-1 py-0.5 text-xs">
+                border-b border-surface-dark/20
+              </code>
+            </Text>
           </div>
 
-          {/* ---- Colonna 2: Stile Minimal — 3 varianti separatore ---- */}
-          <div className="flex flex-col gap-8">
-
-            {/* Variante B1 — Oro (originale, poco visibile) */}
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <Badge variant="outline">B1</Badge>
-                <Text variant="small" className="font-medium">
-                  Oro 20% — <span className="text-text-muted font-normal">border-accent-gold/20</span>
+          <div className="flex flex-col">
+            {/* Piatto 1 — con allergene */}
+            <div className="border-b border-surface-dark/20 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <Heading level={3}>Phở Bò</Heading>
+                <Text variant="body" as="span" className="shrink-0 font-bold text-accent-gold">
+                  € 14,00
                 </Text>
               </div>
-              <div className="flex flex-col">
-                <div className="border-b border-accent-gold/20 py-3 first:pt-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Phở Bò</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 14</Text>
-                  </div>
-                  <Text variant="body" muted>Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie.</Text>
-                </div>
-                <div className="border-b border-accent-gold/20 py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Gỏi Cuốn</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 8</Text>
-                  </div>
-                  <Text variant="body" muted>Involtini freschi in carta di riso con gamberi, maiale e erbe.</Text>
-                </div>
+              <Text variant="body" muted className="mt-1.5">
+                Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie.
+              </Text>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant="allergen">Contiene glutine</Badge>
               </div>
             </div>
 
-            {/* Variante B2 — Bordeaux 20% */}
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <Badge variant="default">B2</Badge>
-                <Text variant="small" className="font-medium">
-                  Bordeaux 20% — <span className="text-text-muted font-normal">border-surface-dark/20</span>
-                </Text>
+            {/* Piatto 2 — con prezzo alternativo e badge dietetici */}
+            <div className="border-b border-surface-dark/20 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <Heading level={3}>Gỏi Cuốn</Heading>
+                <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <Text variant="body" as="span" className="font-bold text-accent-gold">
+                    € 8,00
+                  </Text>
+                  <Text variant="caption" as="span" muted className="font-medium">
+                    2 pz € 14,00
+                  </Text>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <div className="border-b border-surface-dark/20 py-3 first:pt-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Phở Bò</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 14</Text>
-                  </div>
-                  <Text variant="body" muted>Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie.</Text>
-                </div>
-                <div className="border-b border-surface-dark/20 py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Gỏi Cuốn</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 8</Text>
-                  </div>
-                  <Text variant="body" muted>Involtini freschi in carta di riso con gamberi, maiale e erbe.</Text>
-                </div>
+              <Text variant="body" muted className="mt-1.5">
+                Involtini freschi in carta di riso con gamberi, maiale e erbe.
+              </Text>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant="highlight">Vegan</Badge>
+                <Badge variant="highlight">No Latticini</Badge>
+                <Badge variant="allergen">Contiene arachidi</Badge>
+                <Badge variant="allergen">Contiene crostacei</Badge>
               </div>
             </div>
 
-            {/* Variante B3 — Arancio 30%, 2px */}
-            <div>
-              <div className="mb-3 flex items-center gap-2">
-                <Badge variant="highlight">B3</Badge>
-                <Text variant="small" className="font-medium">
-                  Arancio 30% 2px — <span className="text-text-muted font-normal">border-b-2 border-accent-orange/30</span>
+            {/* Piatto 3 — solo prezzo, gluten free */}
+            <div className="border-b border-surface-dark/20 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <Heading level={3}>Bún Bò Huế</Heading>
+                <Text variant="body" as="span" className="shrink-0 font-bold text-accent-gold">
+                  € 15,00
                 </Text>
               </div>
-              <div className="flex flex-col">
-                <div className="border-b-2 border-accent-orange/30 py-3 first:pt-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Phở Bò</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 14</Text>
-                  </div>
-                  <Text variant="body" muted>Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie.</Text>
-                </div>
-                <div className="border-b-2 border-accent-orange/30 py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <Heading level={3}>Gỏi Cuốn</Heading>
-                    <Text variant="body" className="shrink-0 font-semibold text-accent-gold">€ 8</Text>
-                  </div>
-                  <Text variant="body" muted>Involtini freschi in carta di riso con gamberi, maiale e erbe.</Text>
-                </div>
+              <Text variant="body" muted className="mt-1.5">
+                Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.
+              </Text>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <Badge variant="highlight">Gluten Free</Badge>
               </div>
             </div>
-
           </div>
-
         </div>
 
         {/* ------------------------------------------------------------------ */}
@@ -628,10 +571,10 @@ export default function DesignSystemPage() {
 
         <Text variant="body" muted className="mb-8">
           Test con dati dummy che simulano la struttura reale di PayloadCMS.
-          I piatti esauriti (es. Chả Giò) non vengono renderizzati.
+          Chả Giò (id 3) è marcato esaurito → non viene renderizzato.
         </Text>
 
-        {/* DishCard — singole (solo piatti disponibili) */}
+        {/* DishCard — singole */}
         <Heading level={3} className="mb-4">
           DishCard — singole
         </Heading>

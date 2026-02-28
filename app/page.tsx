@@ -1,13 +1,15 @@
 /**
  * Homepage — Server Component (build-time).
  *
- * Recupera tutti i dati statici da PayloadCMS a build-time tramite
- * getStaticMenuData() e li passa al MenuOrchestrator (Client Component)
- * per la logica di visualizzazione real-time.
+ * Funge da Indice delle Sezioni del menu.
+ * Recupera i dati statici a build-time e li passa a HomeIndex (Client Component)
+ * che applica la logica temporale per mostrare solo le sezioni disponibili ora.
+ *
+ * Routing: Home (Indice) → /menu/[slug] (Dettaglio categoria)
  */
 
 import { getStaticMenuData } from "@/lib/api";
-import { MenuOrchestrator } from "@/components/menu";
+import { HomeIndex } from "@/components/menu/HomeIndex";
 
 export default async function HomePage() {
   let staticData;
@@ -32,5 +34,5 @@ export default async function HomePage() {
     );
   }
 
-  return <MenuOrchestrator staticData={staticData} />;
+  return <HomeIndex staticData={staticData} />;
 }

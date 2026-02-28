@@ -16,7 +16,7 @@ Il brand **Vietnamonamour** usa un mood caldo ed elegante: sfondo crema, testi b
 |---|---|---|---|
 | `background` | `bg-background` | `#FFEDD7` | Sfondo pagina — **sempre questo, mai `bg-white`** |
 | `surface` | `bg-surface` | `#FFFFFF` | Solo per modal, form, elementi sovrapposti |
-| `surface-dark` | `bg-surface-dark` | `#460112` | Footer, header, bordo allergeni, separatore B2 |
+| `surface-dark` | `bg-surface-dark` | `#460112` | **Solo come colore testo** (`text-surface-dark`) su sfondi chiari — titoli bordeaux. Non usare come sfondo. |
 | `text-main` | `text-text-main` | `#080F2C` | Testo principale (blu notte profondo) |
 | `text-light` | `text-text-light` | `#FFEDD7` | Testo su sfondi scuri |
 | `text-muted` | `text-text-muted` | `rgba(8,15,44,0.7)` | Descrizioni, note secondarie |
@@ -30,23 +30,39 @@ Il brand **Vietnamonamour** usa un mood caldo ed elegante: sfondo crema, testi b
 - Prezzi: **sempre** `text-accent-gold font-semibold`.
 - Separatori tra piatti: `border-b border-surface-dark/20` (Bordeaux 20%, 1px — stile B2).
 
-### ⛔ Regola di contrasto — VIETATO
+### ⛔ Regola di contrasto — VIETATO ASSOLUTO
 
 > **`text-main` (#080F2C) su `surface-dark` (#460112) è VIETATO.**
 > Il contrasto blu notte su bordeaux scuro è insufficiente e il testo risulta illeggibile.
+> **Pena: illeggibilità garantita. Non ci sono eccezioni.**
 
-`surface-dark` può essere usato **esclusivamente** per elementi strutturali (footer, header, navbar) e **sempre** con testo `text-light` (#FFEDD7) o `accent-gold` (#F8B624).
+**Regola universale:**
+- Sfondo scuro → testo **sempre** chiaro (`text-text-light` o `text-accent-gold`)
+- Sfondo chiaro → testo **sempre** scuro (`text-text-main` o `text-text-muted`)
 
 | Combinazione | Stato | Note |
 |---|---|---|
 | `text-main` su `bg-background` | ✅ Consentita | Uso standard per tutto il contenuto |
 | `text-main` su `bg-surface` | ✅ Consentita | Per modal, form, overlay |
-| `text-light` su `bg-surface-dark` | ✅ Consentita | Footer, header, navbar |
-| `accent-gold` su `bg-surface-dark` | ✅ Consentita | Prezzi, link, sezione attiva su sfondo scuro |
+| `text-surface-dark` su `bg-background` | ✅ Consentita | Titoli bordeaux su crema — ottimo contrasto |
+| `text-light` su `bg-text-main` | ✅ Consentita | Footer, navbar sticky, button primary |
+| `accent-gold` su `bg-text-main` | ✅ Consentita | Prezzi, link attivi su sfondo blu notte |
+| **`text-main` su `bg-text-main`** | ❌ **VIETATA** | Stesso colore — invisibile |
 | **`text-main` su `bg-surface-dark`** | ❌ **VIETATA** | Contrasto insufficiente — illeggibile |
-| `text-muted` su `bg-surface-dark` | ❌ **VIETATA** | Idem — tono su tono |
+| **`bg-surface-dark` come sfondo** | ❌ **VIETATA** | Non usare surface-dark come sfondo — solo come colore testo |
 
-`surface-dark` **non deve mai** essere usato come sfondo per sezioni di contenuto, card piatti o qualsiasi area che contenga testo principale del menu.
+**Uso di `surface-dark`:**
+`surface-dark` è usato **solo** come colore di testo (`text-surface-dark`) su sfondi chiari — es. titoli sezione bordeaux su crema. **Non viene mai usato come sfondo** (`bg-surface-dark`).
+
+- Footer: usa `bg-text-main` (Blu Notte)
+- Header: usa `bg-background` (Crema)
+- Navbar sticky: usa `bg-text-main/95` (Blu Notte semitrasparente)
+- Separatori tra piatti: `border-surface-dark/20` (bordeaux come colore bordo, non sfondo)
+
+**Safety check prima di scrivere codice UI:**
+1. Qual è il colore di sfondo dell'elemento?
+2. Se è scuro (`surface-dark`, `text-main`) → il testo DEVE essere `text-light` o `accent-gold`
+3. Se è chiaro (`background`, `surface`) → il testo DEVE essere `text-main`, `text-muted` o `text-surface-dark`
 
 ---
 
@@ -135,10 +151,12 @@ Wrapper centrato `max-w-4xl` con padding responsive:
 
 ## 4. Pattern Componenti di Dominio
 
-### DishCard — Stile Minimal B2 (approvato per produzione)
+### DishCard — Stile Minimal B2 (unico stile approvato)
+
+Il separatore è `border-b border-surface-dark/20` (bordeaux 20%, 1px). Nessun sfondo, nessuna shadow.
 
 ```tsx
-// ✅ CORRETTO — separatore bordeaux 20%, 1px
+// ✅ CORRETTO — stile B2 approvato
 <div className="border-b border-surface-dark/20 py-5">
   <div className="flex items-start justify-between gap-4">
     <Heading level={3}>Phở Bò</Heading>
@@ -150,13 +168,15 @@ Wrapper centrato `max-w-4xl` con padding responsive:
     <Badge variant="allergen">Contiene sesamo</Badge>
   </div>
 </div>
-
-// ❌ EVITARE — card bianca su crema (appesantisce la pagina)
-<div className="rounded-md bg-surface p-4 shadow-sm">...</div>
-
-// ❌ EVITARE — bordo arancione 2px (stile B1, non approvato)
-<div className="border-b-2 border-accent-orange/30 py-4">...</div>
 ```
+
+**Stili scartati — non usare:**
+
+| Stile | Classe | Motivo scarto |
+|---|---|---|
+| A — Card bianca | `bg-surface rounded-md shadow-sm p-4` | Appesantisce la pagina, contrasta col mood minimal |
+| B1 — Bordo oro | `border-b border-accent-gold/20` | Poco visibile su sfondo crema |
+| B3 — Bordo arancione 2px | `border-b-2 border-accent-orange/30` | Troppo aggressivo, distrae dal contenuto |
 
 ### Sezione menu — Layout aperto
 
@@ -171,20 +191,45 @@ Wrapper centrato `max-w-4xl` con padding responsive:
 <div className="rounded-md border border-gray-200 p-6">...</div>
 ```
 
-### Sfondi scuri (Header, Footer)
+### Header — sfondo crema (approvato)
+
+L'header usa `bg-background` (crema), **non** `bg-surface-dark`. Questo evita la pesantezza visiva e garantisce il contrasto corretto senza rischi.
 
 ```tsx
-// ✅ CORRETTO — testo crema/oro su bordeaux
-<header className="bg-surface-dark py-10">
-  <p className="font-serif text-4xl text-text-light">Vietnamonamour</p>
-  <Text variant="small" className="text-accent-gold">Servizio Pranzo</Text>
+// ✅ CORRETTO — header su sfondo crema
+<header className="bg-background border-b border-surface-dark/10 py-6">
+  <p className="font-serif text-4xl text-surface-dark">Vietnamonamour</p>
+  <Text variant="small" muted>Servizio Pranzo</Text>
 </header>
 
-// ❌ EVITARE — testo blu notte su sfondo scuro (illeggibile)
-<header className="bg-surface-dark">
-  <p className="text-text-main">...</p>
+// ❌ EVITARE — header su sfondo bordeaux (pesante + rischio contrasto)
+<header className="bg-surface-dark py-10">
+  <p className="text-text-main">...</p>  {/* ILLEGGIBILE */}
 </header>
 ```
+
+### Footer — sfondo Blu Notte (approvato)
+
+Il footer usa `bg-text-main` (Blu Notte `#080F2C`). Il testo deve essere **esclusivamente** `text-text-light` o `text-accent-gold`. Non usare il componente `<Text>` direttamente — applica `text-text-main` di default che su sfondo scuro è illeggibile. Usa elementi nativi (`<p>`, `<span>`) con le classi corrette.
+
+```tsx
+// ✅ CORRETTO — testo crema/oro su Blu Notte
+<footer className="bg-text-main py-10">
+  <p className="font-serif text-xl font-bold text-text-light">Vietnamonamour</p>
+  <p className="font-sans text-sm text-text-light/70">Via Roma 1, Milano</p>
+  <a className="font-sans text-sm text-text-light/60 hover:text-accent-gold">Instagram</a>
+</footer>
+
+// ❌ EVITARE — testo scuro su sfondo scuro (illeggibile)
+<footer className="bg-text-main">
+  <p className="text-text-main">...</p>
+</footer>
+
+// ❌ EVITARE — sfondo bordeaux (non più usato per footer)
+<footer className="bg-surface-dark">...</footer>
+```
+
+> **Nota:** `surface-dark` (#460112) è riservato **solo** come colore di testo (`text-surface-dark`) su sfondi chiari (es. titoli bordeaux su crema). Non viene più usato come sfondo di nessun componente.
 
 ---
 
