@@ -20,7 +20,7 @@
  */
 
 import { useMemo } from "react";
-import type { ActiveSlot, Bevanda, Birra, Liquore, MenuConfig, MenuFisso, Piatto, SezioneRisolta, Vino } from "@/types";
+import type { ActiveSlot, Bevanda, Birra, Liquore, MenuConfig, MenuFisso, Piatto, SezioneMenuConfig, SezioneRisolta, Vino } from "@/types";
 import { resolveMenuSection } from "@/lib/api";
 
 // ---------------------------------------------------------------------------

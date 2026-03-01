@@ -42,7 +42,7 @@ function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
   // Categorie attive nell'ordine delle sezioni risolte (per StickyNav)
   const categorieAttive: CategoriaMenu[] = sections.map((s) =>
     categorieMap.get(s.slug) ?? {
-      id: s.slug,
+      id: 0,
       nome: s.titolo,
       slug: s.slug,
       attiva: true,
@@ -53,7 +53,7 @@ function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
 
   return (
     <>
-      <MenuHeader menuConfig={menuConfig} generali={generali} status={status} />
+      <MenuHeader menuConfig={menuConfig} />
 
       {categorieAttive.length > 0 && (
         <StickyNav

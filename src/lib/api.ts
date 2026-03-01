@@ -12,8 +12,10 @@
  *   - sourceCollection: array (es. ["piatti"], ["bevande", "birre"])
  * - generali: { scheduleWeekly[], lunchSlot, dinnerSlot, exceptions[] }
  * - piatti: id numerico, categoria embedded, campi booleani dietetici
- * - vini: depth=2 per popolare tipologia, nazione, regione (con regione.nazione), zona
- * - birre/bevande/liquori: depth=1 per popolare tipologia e nazione
+ * - vini: depth=1 (tipologia popolata); nazione/regione/zona arrivano come ID numerici
+ *   → hydratati a build-time con le lookup map di nazioni/regioni/zone
+ * - birre/bevande/liquori: depth=1 (tipologia popolata); nazione come ID numerico
+ *   → hydratati a build-time con la lookup map di nazioni
  * - Categorie: NON hanno endpoint proprio — estratte dai piatti
  */
 
@@ -27,14 +29,17 @@ import type {
   MenuConfig,
   MenuFisso,
   MenuItem,
+  Nazione,
   PayloadListResponse,
   Piatto,
+  Regione,
   SezioneMenuConfig,
   SezioneRisolta,
   SourceCollection,
   StaticMenuData,
   TargetCategoryRef,
   Vino,
+  Zona,
 } from "@/types";
 import type { DisponibilitaResponse } from "@/types/disponibilita";
 
@@ -373,10 +378,6 @@ export function resolveMenuSection(
         });
 
     mfRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[resolveMenuSection] "${sezione.label}" → menuFissi: ${mfRisolti.length}/${menuFissi.length}`);
-    }
     return { items: [], menuFissi: mfRisolti };
   }
 
@@ -429,13 +430,6 @@ export function resolveMenuSection(
 
     const converted = filtered.map((item) => entry.convert(item as never));
     allItems.push(...converted);
-
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        `[resolveMenuSection] "${sezione.label}" | source="${source}" | filterMode=${filterMode} ` +
-        `| targetIds=[${[...targetIds].join(",")}] → ${converted.length}/${entry.raw.length}`
-      );
-    }
   }
 
   allItems.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
@@ -470,6 +464,54 @@ function resolveAllSezioni(
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: hydration relazioni geografiche
+// ---------------------------------------------------------------------------
+
+/**
+ * Sostituisce gli ID numerici di nazione/regione/zona nei vini con i rispettivi
+ * oggetti popolati, usando lookup map costruite a build-time.
+ *
+ * Il backend Payload non popola queste relazioni nemmeno con depth=2 quando
+ * sono relazioni "semplici" (non embedded). La soluzione raccomandata è il
+ * lookup lato frontend a build-time: zero chiamate extra a runtime.
+ */
+function hydrateVini(
+  vini: Vino[],
+  nazioniMap: Map<number, Nazione>,
+  regioniMap: Map<number, Regione>,
+  zoneMap: Map<number, Zona>
+): Vino[] {
+  return vini.map((v) => ({
+    ...v,
+    nazione: typeof v.nazione === "number"
+      ? (nazioniMap.get(v.nazione) ?? v.nazione)
+      : v.nazione,
+    regione: typeof v.regione === "number"
+      ? (regioniMap.get(v.regione) ?? v.regione)
+      : v.regione,
+    zona: typeof v.zona === "number"
+      ? (zoneMap.get(v.zona) ?? v.zona)
+      : v.zona,
+  }));
+}
+
+/**
+ * Sostituisce l'ID numerico di nazione in birre, liquori e bevande con
+ * l'oggetto Nazione popolato.
+ */
+function hydrateNazione<T extends { nazione?: Nazione | number | null }>(
+  items: T[],
+  nazioniMap: Map<number, Nazione>
+): T[] {
+  return items.map((item) => ({
+    ...item,
+    nazione: typeof item.nazione === "number"
+      ? (nazioniMap.get(item.nazione) ?? item.nazione)
+      : item.nazione,
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // API pubblica — Build-time
 // ---------------------------------------------------------------------------
 
@@ -480,6 +522,8 @@ function resolveAllSezioni(
  * - Piatti, vini, allergeni: obbligatori — se falliscono, la build fallisce.
  * - Categorie: estratte dai piatti (nessuna chiamata API separata).
  * - menu-config, generali: opzionali — se non configurati, si usano fallback.
+ * - nazioni, regioni, zone: opzionali — se vuoti, i campi geografici restano ID numerici
+ *   (la DishCard li ignora silenziosamente grazie a getNome()).
  *
  * @throws {Error} se le collection principali non sono raggiungibili
  */
@@ -488,18 +532,35 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     throw new Error("NEXT_PUBLIC_PAYLOAD_URL non è configurata nelle variabili d'ambiente.");
   }
 
-  const [piatti, vini, menuFissi, bevande, birre, liquori, allergeni, menuConfigRaw, generaliRaw] =
-    await Promise.all([
-      fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
-      fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}', depth: "2" }),
-      fetchAllDocs<MenuFisso>("menu-fisso", { where: '{"inLista":{"equals":true}}', depth: "2" }),
-      fetchAllDocs<Bevanda>("bevande", { where: '{"inLista":{"equals":true}}', depth: "1" }),
-      fetchAllDocs<Birra>("birre", { where: '{"inLista":{"equals":true}}', depth: "1" }),
-      fetchAllDocs<Liquore>("liquori", { where: '{"inLista":{"equals":true}}', depth: "1" }),
-      fetchAllDocs<Allergene>("allergeni"),
-      fetchGlobalSafe<MenuConfig>("menu-config"),
-      fetchGlobalSafe<Generali>("generali"),
-    ]);
+  const [
+    piatti, vini, menuFissi, bevande, birre, liquori, allergeni,
+    nazioniRaw, regioniRaw, zoneRaw,
+    menuConfigRaw, generaliRaw,
+  ] = await Promise.all([
+    fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
+    fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+    fetchAllDocs<MenuFisso>("menu-fisso", { where: '{"inLista":{"equals":true}}', depth: "2" }),
+    fetchAllDocs<Bevanda>("bevande", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+    fetchAllDocs<Birra>("birre", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+    fetchAllDocs<Liquore>("liquori", { where: '{"inLista":{"equals":true}}', depth: "1" }),
+    fetchAllDocs<Allergene>("allergeni"),
+    fetchAllDocs<Nazione>("nazioni").catch(() => [] as Nazione[]),
+    fetchAllDocs<Regione>("regioni").catch(() => [] as Regione[]),
+    fetchAllDocs<Zona>("zone").catch(() => [] as Zona[]),
+    fetchGlobalSafe<MenuConfig>("menu-config"),
+    fetchGlobalSafe<Generali>("generali"),
+  ]);
+
+  // Costruisce lookup map id→oggetto per la hydration geografica
+  const nazioniMap = new Map(nazioniRaw.map((n) => [n.id, n]));
+  const regioniMap = new Map(regioniRaw.map((r) => [r.id, r]));
+  const zoneMap    = new Map(zoneRaw.map((z) => [z.id, z]));
+
+  // Hydration: sostituisce gli ID numerici con gli oggetti popolati
+  const viniHydrated     = hydrateVini(vini, nazioniMap, regioniMap, zoneMap);
+  const birreHydrated    = hydrateNazione(birre, nazioniMap);
+  const liquoriHydrated  = hydrateNazione(liquori, nazioniMap);
+  const bevandeHydrated  = hydrateNazione(bevande, nazioniMap);
 
   const categorie = extractCategorie(piatti);
 
@@ -520,9 +581,6 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
       ...menuConfigRaw,
       standardItems: sezioniNormalizzate,
     };
-    console.log(
-      `[api] menu-config OK — ${sezioniNormalizzate.length} sezioni: ${sezioniNormalizzate.map((s) => `"${s.label}"`).join(", ")}`
-    );
   } else {
     // Fallback: genera sezioni automatiche dalle categorie estratte
     menuConfig = {
@@ -537,18 +595,20 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
         ordine: index,
       })),
     };
-    console.log(
-      `[api] menu-config non configurato — fallback con ${menuConfig.standardItems!.length} categorie: ${categorie.map((c) => c.nome).join(", ")}`
-    );
   }
 
-  // Risolvi tutte le sezioni a build-time (Query Builder)
+  // Risolvi tutte le sezioni a build-time (Query Builder) — usa le versioni hydrated
   const sezioniRisolte = resolveAllSezioni(
-    menuConfig.standardItems!, piatti, vini, menuFissi, bevande, birre, liquori
+    menuConfig.standardItems!, piatti, viniHydrated, menuFissi, bevandeHydrated, birreHydrated, liquoriHydrated
   );
 
   return {
-    piatti, vini, menuFissi, bevande, birre, liquori,
+    piatti,
+    vini: viniHydrated,
+    menuFissi,
+    bevande: bevandeHydrated,
+    birre: birreHydrated,
+    liquori: liquoriHydrated,
     categorie, allergeni, menuConfig, generali, sezioniRisolte,
   };
 }
