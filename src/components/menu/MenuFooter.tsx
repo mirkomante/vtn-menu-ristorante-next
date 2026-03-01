@@ -4,6 +4,7 @@
  * Mostra:
  * - Nome del ristorante
  * - Testo del footer configurato nel CMS
+ * - Annotazione Rich Text (Lexical) se presente — supporta link e liste
  * - Indirizzo e telefono (se presenti in MenuConfig)
  * - Link social (Instagram, Facebook) se configurati
  * - Copyright con anno dinamico
@@ -14,6 +15,7 @@
 
 import { Container } from "@/components/ui";
 import type { MenuConfig } from "@/types";
+import { LexicalRenderer } from "./LexicalRenderer";
 
 export interface MenuFooterProps {
   menuConfig: MenuConfig;
@@ -33,11 +35,19 @@ export function MenuFooter({ menuConfig }: MenuFooterProps) {
             {menuConfig.nomeRistorante}
           </p>
 
-          {/* Testo footer CMS */}
+          {/* Testo footer CMS (plain text) */}
           {menuConfig.testoFooter && (
             <p className="max-w-prose font-sans text-sm text-text-light/70">
               {menuConfig.testoFooter}
             </p>
+          )}
+
+          {/* Annotazione Rich Text (Lexical) — supporta link, liste, bold/italic */}
+          {menuConfig.annotazione && (
+            <LexicalRenderer
+              content={menuConfig.annotazione}
+              className="max-w-prose font-sans text-sm text-text-light/70 space-y-2 text-center"
+            />
           )}
 
           {/* Indirizzo e telefono */}

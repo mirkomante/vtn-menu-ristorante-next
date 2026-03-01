@@ -50,7 +50,8 @@ Le sezioni vengono risolte a build-time da `resolveMenuSection()` in `api.ts` e 
 | `src/types/disponibilita.ts` | Tipo per il JSON GCS | Quando cambia la struttura del file di disponibilità |
 | `src/lib/api.ts` | Fetcher build-time + client-side + Query Builder | Quando cambiano gli endpoint o la logica di filtro |
 | `src/hooks/useTimekeeper.ts` | Logica temporale (apertura, slot) | Quando cambiano le regole di orario |
-| `src/hooks/useMenuStructure.ts` | Logica strutturale (sezioni visibili) | Quando cambia la logica di visibilità sezioni |
+| `src/hooks/useMenuStructure.ts` | Logica strutturale (sezioni visibili per slot e giorno) | Quando cambia la logica di visibilità sezioni |
+| `src/components/menu/LexicalRenderer.tsx` | Parser Lexical Rich Text → React | Quando si aggiungono nuovi tipi di nodo Lexical |
 | `src/context/MenuContext.tsx` | Stato globale client-side | Quando si aggiunge stato globale al menu |
 | `app/globals.css` | Tema Tailwind v4 (`@theme`) | Quando si aggiungono colori, font o token |
 
@@ -110,6 +111,8 @@ Tre livelli di decisione, eseguiti in sequenza:
 ```
 
 **Regola fondamentale:** se `activeSlot === null` (fuori orario di servizio), le sezioni con `visibility: 'lunch_only'` o `'dinner_only'` scompaiono. Rimangono solo quelle `'always'` (es. carta vini, bevande).
+
+**Regola `activeDays`:** la visibilità delle sezioni dipende ora anche da `activeDays` (giorno della settimana), oltre che dallo slot orario. Se una sezione ha `activeDays` definito e non vuoto, viene nascosta nei giorni non inclusi nell'array — **indipendentemente** dal valore di `visibility`. Il controllo `activeDays` ha priorità su `visibility` e viene eseguito per primo in `isSectionVisible()` dentro `useMenuStructure.ts`.
 
 **Piatto esaurito = piatto invisibile.** Non viene mostrato con opacità ridotta o badge — viene rimosso dalla lista. Il filtro avviene in `MenuSection` (solo per `_type === "piatto"`), non in `DishCard`. Vini e bevande sono sempre visibili.
 
@@ -250,10 +253,14 @@ Tre livelli di decisione, eseguiti in sequenza:
     targetCategories: Array<{
       relationTo: string,     // es. "categoria-piatti", "categoria-menu-fisso"
       value: { id: number, nome: string, ... }  // popolato solo con ?depth=2
-    }>
+    }>,
+    activeDays?: GiornoSettimana[],  // opzionale — giorni attivi (es. ["monday","tuesday"])
   }>,
   isActive: boolean,
   activeRange: { start: string | null, end: string | null },
+  logo?: PayloadMedia | number | null,  // logo del ristorante
+  title?: string,                       // titolo personalizzato del menu (fallback: nomeRistorante)
+  annotazione?: LexicalRoot | null,     // Rich Text Lexical per note/avvisi nel footer
 }
 ```
 
@@ -382,7 +389,7 @@ Prima di scrivere qualsiasi classe CSS/Tailwind, verifica sempre:
 
 ### Nuova sezione del menu
 
-Le sezioni sono configurate nel CMS (Global `menu-config`, campo `standardItems`). Non richiedono modifiche al codice frontend. Il campo `visibility` controlla quando la sezione è visibile (`always`/`lunch_only`/`dinner_only`).
+Le sezioni sono configurate nel CMS (Global `menu-config`, campo `standardItems`). Non richiedono modifiche al codice frontend. Il campo `visibility` controlla quando la sezione è visibile (`always`/`lunch_only`/`dinner_only`). Il campo `activeDays` (opzionale) limita ulteriormente la visibilità ai soli giorni specificati.
 
 La nuova sezione comparirà automaticamente:
 1. Nell'indice Home come `SectionCard` cliccabile.

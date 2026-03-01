@@ -142,6 +142,7 @@ I **menu fissi** (pranzo, degustazione) hanno struttura diversa (`MenuFisso`) e 
 | `sourceCollection` | `string[]` | Array (es. `["piatti"]`, `["bevande","birre"]`, `["piatti","vini"]`) |
 | `filterMode` | `"all"` \| `"include"` \| `"exclude"` | Logica di filtro categorie |
 | `targetCategories` | `{ relationTo, value: { id, nome } }[]` | Struttura polimorphic di Payload |
+| `activeDays` | `GiornoSettimana[]` | **Opzionale.** Giorni della settimana in cui la sezione è visibile. Se assente o vuoto → visibile ogni giorno. Ha **priorità** sul filtro `visibility`. |
 
 ### Logica di filtro (`filterMode`)
 
@@ -261,7 +262,8 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 | `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, smista `MenuItem[]` → `DishCard` e `MenuFisso[]` → `MenuFissoCard` |
 | `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Smart Component polimorfico per `MenuItem`: body variabile per `_type` (piatto/vino/birra/liquore/bevanda) |
 | `MenuFissoCard` | `src/components/menu/MenuFissoCard.tsx` | Server-compatible | Menu a prezzo fisso (`MenuFisso`): nome, prezzo, lista piatti inclusi, servizi aggiuntivi |
-| `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright |
+| `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright, annotazione Rich Text |
+| `LexicalRenderer` | `src/components/menu/LexicalRenderer.tsx` | Server-compatible | Parser leggero per nodi Lexical: testo formattato, link, liste, paragrafi, heading |
 
 ## Struttura dei dati backend (PayloadCMS)
 
@@ -305,6 +307,29 @@ Usate come relazioni nei vini, birre, liquori e bevande. Non hanno endpoint dire
 | `/api/globals/menu-config?depth=2` | `MenuConfig` | `standardItems[]` | **Richiede `?depth=2`** per popolare `targetCategories.value`. Senza `depth=2` restituisce `{}`. |
 | `/api/vini?depth=2` | `Vino` | `nazione`, `regione`, `zona` | `depth=2` necessario per `regione.nazione`. Con `depth=1` la nazione della regione è solo un id numerico. |
 | `/api/globals/generali?depth=2` | `Generali` | `scheduleWeekly[]` | Orari in inglese (`"monday"`, ecc.), `lunchSlot`/`dinnerSlot` espliciti |
+
+### Nuovi campi di `MenuConfig` (aggiornamento backend)
+
+| Campo | Tipo TS | Descrizione |
+|---|---|---|
+| `title` | `string?` | Titolo personalizzato del menu (es. "Menu Primavera 2025"). Se assente, `MenuHeader` usa `nomeRistorante` come fallback. |
+| `logo` | `PayloadMedia \| number \| null` | Logo del ristorante — campo root di `MenuConfig`. |
+| `annotazione` | `LexicalRoot \| null` | Annotazione Rich Text in formato Lexical. Supporta paragrafi, bold/italic, link, liste. Renderizzata da `LexicalRenderer` nel `MenuFooter`. |
+
+### Logica filtro `activeDays` in `useMenuStructure`
+
+Il filtro per giorno della settimana ha **priorità** rispetto al filtro per slot orario (`visibility`):
+
+```typescript
+// Ordine di controllo in isSectionVisible():
+// 1. activeDays (se definito e non vuoto): nasconde la sezione se il giorno corrente non è nell'array
+// 2. visibility: filtra per slot pranzo/cena/sempre
+if (section.activeDays?.length > 0 && !section.activeDays.includes(getTodayDayName())) {
+  return false; // nasconde indipendentemente dallo slot
+}
+```
+
+`getTodayDayName()` usa `new Date().getDay()` e restituisce il giorno in inglese lowercase (`"monday"`, ..., `"sunday"`), coerente con il tipo `GiornoSettimana` del backend.
 
 ### Struttura reale di `generali`
 
@@ -356,6 +381,8 @@ standardItems = categorie.map((cat, index) => ({
 - `exceptions[].isClosed`: boolean (non `chiuso`)
 
 `activeSlot` viene determinato confrontando l'orario corrente con `lunchSlot` e `dinnerSlot`. Le sezioni con `visibility: "lunch_only"` sono visibili solo quando `activeSlot === "lunch"`, e viceversa per `"dinner_only"`.
+
+**Filtro per giorno della settimana (`activeDays`):** se una sezione ha `activeDays` definito e non vuoto, viene nascosta nei giorni non inclusi nell'array, indipendentemente dallo slot orario. Il controllo avviene in `isSectionVisible()` in `useMenuStructure.ts`, prima del controllo `visibility`.
 
 ## Gestione disponibilità real-time
 

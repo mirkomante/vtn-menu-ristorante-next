@@ -415,6 +415,7 @@ export interface TargetCategoryRef {
  * - `visibility`: "lunch_only" | "dinner_only" | "always"
  * - `sourceCollection`: array di stringhe (non stringa singola)
  * - `targetCategories`: array di { relationTo, value } (non array di id)
+ * - `activeDays`: giorni della settimana in cui la sezione è visibile (opzionale)
  */
 export interface SezioneMenuConfig {
   id?: string;
@@ -429,6 +430,75 @@ export interface SezioneMenuConfig {
   /** Categorie target nel formato polimorphic di Payload */
   targetCategories: TargetCategoryRef[];
   ordine?: number;
+  /**
+   * Giorni della settimana in cui la sezione è attiva.
+   * Se assente o array vuoto → visibile tutti i giorni.
+   * Ha priorità sul filtro visibility (slot pranzo/cena).
+   */
+  activeDays?: GiornoSettimana[];
+}
+
+// ---------------------------------------------------------------------------
+// Lexical Rich Text — nodi supportati per l'annotazione
+// ---------------------------------------------------------------------------
+
+/** Nodo testo con formattazione inline */
+export interface LexicalTextNode {
+  type: "text";
+  text: string;
+  format?: number; // bitmask: 1=bold, 2=italic, 8=underline, 16=strikethrough
+}
+
+/** Nodo link */
+export interface LexicalLinkNode {
+  type: "link";
+  url?: string;
+  fields?: { url?: string; newTab?: boolean };
+  children: LexicalInlineNode[];
+}
+
+/** Nodo elemento di lista */
+export interface LexicalListItemNode {
+  type: "listitem";
+  children: LexicalInlineNode[];
+  value?: number;
+}
+
+/** Nodo lista (ordinata o non ordinata) */
+export interface LexicalListNode {
+  type: "list";
+  listType: "bullet" | "number";
+  children: LexicalListItemNode[];
+}
+
+/** Nodo paragrafo */
+export interface LexicalParagraphNode {
+  type: "paragraph";
+  children: LexicalInlineNode[];
+}
+
+/** Nodo heading */
+export interface LexicalHeadingNode {
+  type: "heading";
+  tag: "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+  children: LexicalInlineNode[];
+}
+
+/** Nodi inline (figli di paragrafo, link, listitem) */
+export type LexicalInlineNode = LexicalTextNode | LexicalLinkNode;
+
+/** Nodi di blocco (figli di root) */
+export type LexicalBlockNode =
+  | LexicalParagraphNode
+  | LexicalHeadingNode
+  | LexicalListNode;
+
+/** Root del documento Lexical */
+export interface LexicalRoot {
+  root: {
+    type: "root";
+    children: LexicalBlockNode[];
+  };
 }
 
 /**
@@ -437,7 +507,8 @@ export interface SezioneMenuConfig {
  * Struttura reale del backend (verificata via API):
  * - `standardItems`: array di sezioni (non `sezioni`)
  * - `isActive` + `activeRange`: per il periodo speciale globale
- * - NON ha nomeRistorante, logo, indirizzo, telefono, social — sono campi da aggiungere
+ * - `logo`: immagine logo del ristorante (campo root)
+ * - `title`: titolo personalizzato del menu (campo root, opzionale)
  */
 export interface MenuConfig {
   id: string | number;
@@ -449,10 +520,22 @@ export interface MenuConfig {
     start: string | null;
     end: string | null;
   };
+  /** Logo del ristorante — campo root di MenuConfig */
+  logo?: PayloadMedia | number | null;
+  /**
+   * Titolo personalizzato del menu (es. "Menu Primavera 2025").
+   * Se assente, il frontend usa `nomeRistorante` come fallback.
+   */
+  title?: string;
   /** Campi opzionali — potrebbero non essere presenti nel backend attuale */
   nomeRistorante?: string;
   testoFooter?: string;
   messaggioBenvenuto?: string;
+  /**
+   * Annotazione in formato Lexical Rich Text.
+   * Supporta: paragrafi, bold/italic, link, liste (bullet e numbered).
+   */
+  annotazione?: LexicalRoot | null;
   indirizzo?: string;
   telefono?: string;
   instagram?: string;

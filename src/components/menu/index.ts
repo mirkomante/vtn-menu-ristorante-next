@@ -24,3 +24,6 @@ export type { MenuHeaderProps } from "./MenuHeader";
 
 export { MenuFooter } from "./MenuFooter";
 export type { MenuFooterProps } from "./MenuFooter";
+
+export { LexicalRenderer } from "./LexicalRenderer";
+export type { LexicalRendererProps } from "./LexicalRenderer";

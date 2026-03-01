@@ -20,7 +20,7 @@
  */
 
 import { useMemo } from "react";
-import type { ActiveSlot, Bevanda, Birra, Liquore, MenuConfig, MenuFisso, Piatto, SezioneMenuConfig, SezioneRisolta, Vino } from "@/types";
+import type { ActiveSlot, Bevanda, Birra, GiornoSettimana, Liquore, MenuConfig, MenuFisso, Piatto, SezioneMenuConfig, SezioneRisolta, Vino } from "@/types";
 import { resolveMenuSection } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -28,16 +28,44 @@ import { resolveMenuSection } from "@/lib/api";
 // ---------------------------------------------------------------------------
 
 /**
- * Determina se una sezione deve essere visibile dato lo slot attivo.
- * Usa i valori reali del backend: "lunch_only", "dinner_only", "always".
+ * Restituisce il giorno della settimana corrente in inglese lowercase,
+ * nel formato usato dal backend ("monday", "tuesday", ...).
+ */
+function getTodayDayName(): GiornoSettimana {
+  const days: GiornoSettimana[] = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+  return days[new Date().getDay()];
+}
+
+/**
+ * Determina se una sezione deve essere visibile dato lo slot attivo e il giorno corrente.
+ *
+ * Ordine di priorità:
+ * 1. `activeDays`: se definito e non vuoto, la sezione è nascosta se il giorno
+ *    corrente non è nell'array (indipendentemente dallo slot).
+ * 2. `visibility`: filtra per slot pranzo/cena/sempre.
  */
 function isSectionVisible(
-  visibility: SezioneMenuConfig["visibility"],
+  section: Pick<SezioneMenuConfig, "visibility" | "activeDays">,
   activeSlot: ActiveSlot
 ): boolean {
-  if (visibility === "always") return true;
-  if (visibility === "lunch_only") return activeSlot === "lunch";
-  if (visibility === "dinner_only") return activeSlot === "dinner";
+  // Controllo giorno della settimana (priorità massima)
+  if (section.activeDays && section.activeDays.length > 0) {
+    const today = getTodayDayName();
+    if (!section.activeDays.includes(today)) return false;
+  }
+
+  // Controllo slot orario
+  if (section.visibility === "always") return true;
+  if (section.visibility === "lunch_only") return activeSlot === "lunch";
+  if (section.visibility === "dinner_only") return activeSlot === "dinner";
   return false;
 }
 
@@ -77,7 +105,7 @@ export function computeMenuStructure({
   const risultati: SezioneRisolta[] = [];
 
   for (const sezione of sezioni) {
-    if (!isSectionVisible(sezione.visibility, activeSlot)) continue;
+    if (!isSectionVisible(sezione, activeSlot)) continue;
 
     const { items, menuFissi: menuFissiSezione } =
       resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori);
