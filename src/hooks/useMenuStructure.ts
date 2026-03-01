@@ -3,24 +3,21 @@
 /**
  * useMenuStructure — La Struttura
  *
- * Trasforma la configurazione grezza del CMS (SezioneMenuConfig[]) in un array
- * di sezioni già risolte (SezioneRisolta[]) pronte per il rendering.
+ * Filtra le sezioni pre-risolte dalla build (`sezioniRisolte`) in base allo
+ * slot attivo e al giorno corrente. Sort e grouping sono già stati applicati
+ * a build-time da `resolveMenuSection()` — non vengono ricalcolati a runtime.
  *
- * Logica applicata:
- * 1. Filtra le sezioni in base allo slot attivo (visibility: lunch/dinner/always).
- * 2. Per ogni sezione, determina se siamo nel `specialPeriod`.
- * 3. Popola la sezione con i piatti/vini reali usando il Query Builder:
- *    - Se specialPeriod attivo → usa `specialItems`.
- *    - Altrimenti → applica filterMode (all/include/exclude) su targetCategories.
- * 4. Ordina le sezioni per campo `ordine`.
+ * Logica applicata a runtime (solo filtro visibilità):
+ * 1. `activeDays`: se definito e non vuoto, nasconde la sezione se il giorno
+ *    corrente non è nell'array (priorità massima).
+ * 2. `visibility`: filtra per slot pranzo/cena/sempre.
  *
- * NOTA: a runtime (client-side) usa `resolveMenuSection` da api.ts per coerenza
- * con la logica build-time. Le sezioni pre-risolte in `staticData.sezioniRisolte`
- * vengono filtrate per slot — non ricalcolate da zero.
+ * `computeMenuStructure` è mantenuta come funzione pura per compatibilità
+ * e per contesti in cui le `sezioniRisolte` non sono disponibili.
  */
 
 import { useMemo } from "react";
-import type { ActiveSlot, Bevanda, Birra, GiornoSettimana, Liquore, MenuConfig, MenuFisso, Piatto, SezioneMenuConfig, SezioneRisolta, Vino } from "@/types";
+import type { ActiveSlot, Bevanda, Birra, GiornoSettimana, Liquore, MenuConfig, MenuFisso, OrdinamentoMenu, Piatto, SezioneMenuConfig, SezioneRisolta, Vino } from "@/types";
 import { resolveMenuSection } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -56,13 +53,11 @@ function isSectionVisible(
   section: Pick<SezioneMenuConfig, "visibility" | "activeDays">,
   activeSlot: ActiveSlot
 ): boolean {
-  // Controllo giorno della settimana (priorità massima)
   if (section.activeDays && section.activeDays.length > 0) {
     const today = getTodayDayName();
     if (!section.activeDays.includes(today)) return false;
   }
 
-  // Controllo slot orario
   if (section.visibility === "always") return true;
   if (section.visibility === "lunch_only") return activeSlot === "lunch";
   if (section.visibility === "dinner_only") return activeSlot === "dinner";
@@ -70,7 +65,42 @@ function isSectionVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Logica principale (pura, testabile)
+// Filtro slot su sezioniRisolte (path principale a runtime)
+// ---------------------------------------------------------------------------
+
+export interface MenuStructureFromResolvedInput {
+  /** Sezioni già risolte a build-time (con sort/group applicati) */
+  sezioniRisolte: SezioneRisolta[];
+  /** Configurazione del menu — usata solo per leggere visibility/activeDays */
+  menuConfig: MenuConfig;
+  activeSlot: ActiveSlot;
+}
+
+/**
+ * Filtra le sezioni pre-risolte dalla build per lo slot e il giorno correnti.
+ * Non ricalcola sort/group — usa i dati già pronti da `sezioniRisolte`.
+ * Funzione pura, facilmente testabile.
+ */
+export function filterSezioniRisolte({
+  sezioniRisolte,
+  menuConfig,
+  activeSlot,
+}: MenuStructureFromResolvedInput): SezioneRisolta[] {
+  const sezioniConfig = menuConfig.standardItems ?? [];
+
+  // Costruisce una lookup map slug → config per il controllo visibilità
+  const configMap = new Map(sezioniConfig.map((s) => [s.slug, s]));
+
+  return sezioniRisolte.filter((sezione) => {
+    const config = configMap.get(sezione.slug);
+    // Se non c'è config (sezione generata dal fallback), è sempre visibile
+    if (!config) return true;
+    return isSectionVisible(config, activeSlot);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Logica legacy (pura, testabile) — usata quando sezioniRisolte non disponibili
 // ---------------------------------------------------------------------------
 
 export interface MenuStructureInput {
@@ -82,14 +112,15 @@ export interface MenuStructureInput {
   bevande: Bevanda[];
   birre: Birra[];
   liquori: Liquore[];
+  ordinamentoMenu?: OrdinamentoMenu;
 }
 
 /**
  * Risolve le sezioni del menu a partire dalla configurazione e dai dati grezzi.
  * Funzione pura: non usa hook React, facilmente testabile.
  *
- * Usa `resolveMenuSection` (da api.ts) per applicare la logica del Query Builder
- * (filterMode: all/include/exclude) in modo coerente con la build-time.
+ * Preferire `filterSezioniRisolte` quando le `sezioniRisolte` sono disponibili,
+ * poiché evita di ricalcolare sort/group a runtime.
  */
 export function computeMenuStructure({
   menuConfig,
@@ -100,6 +131,7 @@ export function computeMenuStructure({
   bevande,
   birre,
   liquori,
+  ordinamentoMenu = {},
 }: MenuStructureInput): SezioneRisolta[] {
   const sezioni = menuConfig.standardItems ?? [];
   const risultati: SezioneRisolta[] = [];
@@ -107,19 +139,18 @@ export function computeMenuStructure({
   for (const sezione of sezioni) {
     if (!isSectionVisible(sezione, activeSlot)) continue;
 
-    const { items, menuFissi: menuFissiSezione } =
-      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori);
+    const { groups, menuFissi: menuFissiSezione } =
+      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori, ordinamentoMenu);
 
     risultati.push({
       slug: sezione.slug,
       titolo: sezione.label,
-      items,
+      groups,
       menuFissi: menuFissiSezione,
       isSpecialPeriod: false,
     });
   }
 
-  // Ordina le sezioni per campo `ordine`
   return risultati.sort(
     (a, b) =>
       (sezioni.find((s) => s.slug === a.slug)?.ordine ?? 9999) -
@@ -132,17 +163,31 @@ export function computeMenuStructure({
 // ---------------------------------------------------------------------------
 
 /**
- * Restituisce le sezioni del menu risolte e filtrate per lo slot corrente.
- *
- * Si ricalcola solo quando cambiano `activeSlot`, `menuConfig`, `piatti` o `vini`.
+ * Filtra le sezioni pre-risolte dalla build per lo slot e il giorno correnti.
+ * Si ricalcola solo quando cambiano `activeSlot` o `menuConfig`.
  *
  * @example
- * const sections = useMenuStructure({ menuConfig, activeSlot, piatti, vini });
+ * const sections = useMenuStructure({ sezioniRisolte, menuConfig, activeSlot });
  */
-export function useMenuStructure(input: MenuStructureInput): SezioneRisolta[] {
-  return useMemo(
-    () => computeMenuStructure(input),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [input.activeSlot, input.menuConfig, input.piatti, input.vini, input.menuFissi, input.bevande, input.birre, input.liquori]
-  );
+export function useMenuStructure(input: MenuStructureFromResolvedInput): SezioneRisolta[];
+/**
+ * @deprecated Preferire l'overload con `sezioniRisolte` per evitare di
+ * ricalcolare sort/group a runtime. Usare solo se le sezioniRisolte non
+ * sono disponibili nel contesto.
+ */
+export function useMenuStructure(input: MenuStructureInput): SezioneRisolta[];
+export function useMenuStructure(
+  input: MenuStructureFromResolvedInput | MenuStructureInput
+): SezioneRisolta[] {
+  return useMemo(() => {
+    if ("sezioniRisolte" in input) {
+      return filterSezioniRisolte(input);
+    }
+    return computeMenuStructure(input);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    "sezioniRisolte" in input ? input.sezioniRisolte : null,
+    input.activeSlot,
+    input.menuConfig,
+  ]);
 }

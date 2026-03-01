@@ -29,7 +29,12 @@ import type {
   MenuConfig,
   MenuFisso,
   MenuItem,
+  MenuItemGroup,
   Nazione,
+  OrdinamentoCategoriapiatto,
+  OrdinamentoMenu,
+  OrdinamentoSezione,
+  OrdinamentoTipologia,
   PayloadListResponse,
   Piatto,
   Regione,
@@ -95,13 +100,19 @@ async function fetchAllDocs<T>(
 /**
  * Recupera un Global di Payload in modo sicuro.
  * Restituisce null su 404/500 o se la risposta è un oggetto vuoto.
+ *
+ * @param depth - Profondità di popolamento delle relazioni (default: 2).
+ *   Usare 1 o 0 per globals che non supportano depth=2 (es. ordinamento-menu).
+ * @param noCache - Se true, bypassa la cache Next.js (utile dopo fix backend).
  */
-async function fetchGlobalSafe<T>(globalSlug: string): Promise<T | null> {
-  // depth=2 necessario per popolare le relazioni (es. targetCategories.value)
-  const url = `${PAYLOAD_URL}/api/globals/${globalSlug}?depth=2`;
+async function fetchGlobalSafe<T>(globalSlug: string, depth = 2, noCache = false): Promise<T | null> {
+  const url = `${PAYLOAD_URL}/api/globals/${globalSlug}?depth=${depth}`;
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const fetchOptions: RequestInit = noCache
+      ? { cache: "no-store" }
+      : { next: { revalidate: 3600 } };
+    const res = await fetch(url, fetchOptions);
 
     if (!res.ok) {
       console.warn(`[api] Global "${globalSlug}" non disponibile (${res.status}). Uso fallback.`);
@@ -211,6 +222,9 @@ const FALLBACK_MENU_CONFIG: MenuConfig = {
   standardItems: [],
   updatedAt: new Date().toISOString(),
 };
+
+/** Default usato quando il global "ordinamento-menu" non è configurato */
+const FALLBACK_ORDINAMENTO_MENU: OrdinamentoMenu = {};
 
 const FALLBACK_GENERALI: Generali = {
   id: "fallback",
@@ -329,20 +343,337 @@ function applyFilter<T extends { categoria?: unknown }>(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Helpers: sort e group dinamico (OrdinamentoMenu)
+// ---------------------------------------------------------------------------
+
+/**
+ * Legge un valore annidato da un MenuItem tramite una chiave semplice o composta
+ * (es. "nome", "prezzo", "regione.nome", "tipologia.nome").
+ * Restituisce `undefined` se il percorso non esiste.
+ */
+function getNestedValue(item: MenuItem, key: string): unknown {
+  const parts = key.split(".");
+  let current: unknown = item;
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
+/**
+ * Mappa `OrdinamentoOrderBy` al percorso del campo da usare per il sort.
+ * I valori che corrispondono a campi annidati usano la dot-notation.
+ */
+function orderByFieldPath(orderBy: OrdinamentoSezione["orderBy"]): string {
+  switch (orderBy) {
+    case "order":     return "ordine";
+    case "prezzo":    return "prezzo";
+    case "nome":      return "nome";
+    case "regione":   return "regione.nome";
+    case "nazione":   return "nazione.nome";
+    case "tipologia": return "tipologia.nome";
+    case "categoria": return "categoria.nome";
+    default:          return "ordine";
+  }
+}
+
+/**
+ * Ordina un array di MenuItem secondo le regole di `OrdinamentoSezione`.
+ * Supporta campi semplici (`nome`, `prezzo`, `ordine`) e annidati (`regione.nome`).
+ * Default: `orderBy: "order"`, `orderDirection: "asc"`.
+ */
+function sortItems(items: MenuItem[], regole: OrdinamentoSezione): MenuItem[] {
+  const { orderBy = "order", orderDirection = "asc" } = regole;
+  const dir = orderDirection === "asc" ? 1 : -1;
+  const fieldPath = orderByFieldPath(orderBy);
+
+  return [...items].sort((a, b) => {
+    let va: unknown;
+    let vb: unknown;
+
+    if (orderBy === "order") {
+      // Campo `ordine` con fallback numerico — confronto numerico diretto
+      va = a.ordine ?? 9999;
+      vb = b.ordine ?? 9999;
+      return ((va as number) - (vb as number)) * dir;
+    }
+
+    if (orderBy === "prezzo") {
+      va = a.prezzo;
+      vb = b.prezzo;
+      return ((va as number) - (vb as number)) * dir;
+    }
+
+    // Tutti gli altri criteri (nome, regione, nazione, tipologia, categoria):
+    // legge il valore tramite dot-notation e confronta come stringa
+    va = getNestedValue(a, fieldPath);
+    vb = getNestedValue(b, fieldPath);
+    return String(va ?? "").localeCompare(String(vb ?? ""), "it") * dir;
+  });
+}
+
+/**
+ * Mappa `OrdinamentoGroupBy` al percorso del campo nell'item.
+ * Restituisce `null` se il raggruppamento è "nessuno".
+ */
+function groupByFieldPath(
+  groupBy: OrdinamentoSezione["groupBy"]
+): string | null {
+  switch (groupBy) {
+    case "categoria":  return "categoria.nome";
+    case "tipologia":  return "tipologia.nome";
+    case "regione":    return "regione.nome";
+    case "nazione":    return "nazione.nome";
+    default:           return null; // "nessuno" o undefined
+  }
+}
+
+/**
+ * Raggruppa un array di MenuItem per il campo specificato.
+ * Gli item senza valore nel campo di raggruppamento finiscono nel gruppo "Altro".
+ * I gruppi sono ordinati alfabeticamente per titolo (stabile e prevedibile).
+ */
+function groupItems(items: MenuItem[], fieldPath: string): MenuItemGroup[] {
+  const map = new Map<string, MenuItem[]>();
+
+  for (const item of items) {
+    const raw = getNestedValue(item, fieldPath);
+    const key = raw !== null && raw !== undefined ? String(raw) : "Altro";
+    const bucket = map.get(key);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      map.set(key, [item]);
+    }
+  }
+
+  // Ordina i gruppi: "Altro" sempre in fondo, gli altri alfabeticamente
+  const entries = Array.from(map.entries()).sort(([a], [b]) => {
+    if (a === "Altro") return 1;
+    if (b === "Altro") return -1;
+    return a.localeCompare(b, "it");
+  });
+
+  return entries.map(([title, groupItems]) => ({ title, items: groupItems }));
+}
+
+/**
+ * Determina le regole di ordinamento/raggruppamento da applicare a una sezione,
+ * in base alla `primarySource` (prima sorgente non-menu-fisso nella lista).
+ *
+ * Legge i campi flat del backend (es. `piattiOrderBy`, `viniGroupBy`) e li
+ * normalizza in un oggetto `OrdinamentoSezione` per uso interno.
+ */
+function getRegolePerSezione(
+  sources: SourceCollection[],
+  ordinamento: OrdinamentoMenu
+): OrdinamentoSezione {
+  const primarySource = sources.find((s) => s !== "menu-fisso");
+  if (!primarySource) return {};
+
+  const prefixMap: Partial<Record<SourceCollection, string>> = {
+    piatti:  "piatti",
+    vini:    "vini",
+    bevande: "bevande",
+    birre:   "birre",
+    liquori: "liquori",
+  };
+
+  const prefix = prefixMap[primarySource];
+  if (!prefix) return {};
+
+  const raw = ordinamento as Record<string, unknown>;
+
+  return {
+    orderBy:        (raw[`${prefix}OrderBy`]        as OrdinamentoSezione["orderBy"])        ?? "order",
+    orderDirection: (raw[`${prefix}OrderDirection`] as OrdinamentoSezione["orderDirection"]) ?? "asc",
+    groupBy:        (raw[`${prefix}GroupBy`]        as OrdinamentoSezione["groupBy"])        ?? "nessuno",
+  };
+}
+
+/**
+ * Restituisce l'array ordinato di categorie/tipologie per la `primarySource`,
+ * oppure `null` se non disponibile.
+ *
+ * Mappa:
+ * - piatti  → `categoriePiatti`
+ * - vini    → `tipologieVino`
+ * - liquori → `tipologieLiquore`
+ * - birre   → `tipologieBirra`
+ * - bevande → `tipologieBevanda`
+ */
+function getArrayOrdinato(
+  source: SourceCollection,
+  ordinamento: OrdinamentoMenu
+): OrdinamentoCategoriapiatto[] | OrdinamentoTipologia[] | null {
+  switch (source) {
+    case "piatti":  return ordinamento.categoriePiatti?.length  ? ordinamento.categoriePiatti  : null;
+    case "vini":    return ordinamento.tipologieVino?.length    ? ordinamento.tipologieVino    : null;
+    case "liquori": return ordinamento.tipologieLiquore?.length ? ordinamento.tipologieLiquore : null;
+    case "birre":   return ordinamento.tipologieBirra?.length   ? ordinamento.tipologieBirra   : null;
+    case "bevande": return ordinamento.tipologieBevanda?.length ? ordinamento.tipologieBevanda : null;
+    default:        return null;
+  }
+}
+
+/**
+ * Raggruppa i piatti usando `categoriePiatti` come driver dell'ordine.
+ *
+ * Per ogni categoria nell'array (già ordinato dal CMS):
+ * - Se la categoria ha `elementi.docs`, usa quell'ordine per i piatti interni.
+ * - Altrimenti, filtra per `categoria.id` e ordina con `regole`.
+ * - I piatti senza categoria corrispondente finiscono in "Altro" (in fondo).
+ */
+function groupPiattiByCategorie(
+  items: MenuItem[],
+  categorie: OrdinamentoCategoriapiatto[],
+  regole: OrdinamentoSezione
+): MenuItemGroup[] {
+  const groups: MenuItemGroup[] = [];
+  const assegnati = new Set<number>();
+
+  for (const cat of categorie) {
+    const elementiDocs = (cat as OrdinamentoCategoriapiatto).elementi?.docs;
+
+    let groupItems: MenuItem[];
+
+    if (elementiDocs && elementiDocs.length > 0) {
+      // Ordine esplicito da `elementi.docs`: rispetta l'ordine del CMS
+      const docsSet = new Set(elementiDocs);
+      const byId = new Map(items.filter((i) => docsSet.has(i.id)).map((i) => [i.id, i]));
+      groupItems = elementiDocs
+        .map((id) => byId.get(id))
+        .filter((i): i is MenuItem => i !== undefined);
+    } else {
+      // Fallback: filtra per categoria.id e ordina con regole
+      const catItems = items.filter((item) => {
+        const catId = extractCatId((item as unknown as Record<string, unknown>).categoria);
+        return catId === cat.id;
+      });
+      groupItems = sortItems(catItems, regole);
+    }
+
+    if (groupItems.length === 0) continue;
+
+    groupItems.forEach((i) => assegnati.add(i.id));
+    groups.push({ title: cat.nome, items: groupItems });
+  }
+
+  // Piatti non assegnati a nessuna categoria → gruppo "Altro"
+  const altri = sortItems(
+    items.filter((i) => !assegnati.has(i.id)),
+    regole
+  );
+  if (altri.length > 0) {
+    groups.push({ title: "Altro", items: altri });
+  }
+
+  return groups;
+}
+
+/**
+ * Raggruppa gli item per tipologia usando `tipologie` come driver dell'ordine.
+ *
+ * Per ogni tipologia nell'array (già ordinato dal CMS):
+ * - Filtra gli item per `tipologia.id`.
+ * - Ordina gli item interni con `regole`.
+ * - Gli item senza tipologia corrispondente finiscono in "Altro" (in fondo).
+ */
+function groupByTipologie(
+  items: MenuItem[],
+  tipologie: OrdinamentoTipologia[],
+  regole: OrdinamentoSezione
+): MenuItemGroup[] {
+  const groups: MenuItemGroup[] = [];
+  const assegnati = new Set<number>();
+
+  for (const tip of tipologie) {
+    const tipItems = items.filter((item) => {
+      const t = (item as unknown as Record<string, unknown>).tipologia;
+      if (typeof t === "number") return t === tip.id;
+      if (typeof t === "object" && t !== null) {
+        return (t as Record<string, unknown>).id === tip.id;
+      }
+      return false;
+    });
+
+    if (tipItems.length === 0) continue;
+
+    const sorted = sortItems(tipItems, regole);
+    sorted.forEach((i) => assegnati.add(i.id));
+    groups.push({ title: tip.nome, items: sorted });
+  }
+
+  // Item non assegnati a nessuna tipologia → gruppo "Altro"
+  const altri = sortItems(
+    items.filter((i) => !assegnati.has(i.id)),
+    regole
+  );
+  if (altri.length > 0) {
+    groups.push({ title: "Altro", items: altri });
+  }
+
+  return groups;
+}
+
+/**
+ * Applica sort e grouping a un array di MenuItem secondo le regole editoriali.
+ *
+ * Logica di priorità:
+ * 1. Se `ordinamento` contiene l'array ordinato per la `primarySource`
+ *    (es. `categoriePiatti` per piatti, `tipologieVino` per vini) → usa quello
+ *    come driver dell'ordine dei gruppi (fonte di verità editoriale).
+ * 2. Altrimenti → raggruppamento dinamico automatico (`groupBy` + `groupItems`).
+ * 3. Se `groupBy === "nessuno"` → lista piatta (un singolo gruppo senza titolo).
+ */
+function applyOrdinamento(
+  items: MenuItem[],
+  regole: OrdinamentoSezione,
+  primarySource: SourceCollection | undefined,
+  ordinamento: OrdinamentoMenu
+): MenuItemGroup[] {
+  // ── Path 1: array ordinato dal CMS (fonte di verità) ──────────────────────
+  if (primarySource) {
+    const arrayOrdinato = getArrayOrdinato(primarySource, ordinamento);
+
+    if (arrayOrdinato && arrayOrdinato.length > 0) {
+      if (primarySource === "piatti") {
+        return groupPiattiByCategorie(
+          items,
+          arrayOrdinato as OrdinamentoCategoriapiatto[],
+          regole
+        );
+      }
+      // vini, liquori, birre, bevande → raggruppamento per tipologia
+      return groupByTipologie(items, arrayOrdinato as OrdinamentoTipologia[], regole);
+    }
+  }
+
+  // ── Path 2: raggruppamento dinamico automatico (fallback) ─────────────────
+  const sorted = sortItems(items, regole);
+  const fieldPath = groupByFieldPath(regole.groupBy);
+
+  if (!fieldPath) {
+    return [{ items: sorted }];
+  }
+
+  return groupItems(sorted, fieldPath);
+}
+
 /**
  * Risolve una sezione virtuale del menu applicando la logica del Query Builder
  * con approccio **Multi-Source Additivo**: ogni sorgente in `sourceCollection`
  * viene processata e filtrata indipendentemente, poi i risultati vengono uniti.
  *
- * Restituisce `{ items: MenuItem[], menuFissi: MenuFisso[] }`:
- * - `items`: lista unificata di voci renderizzabili (piatti, vini, bevande, birre, liquori)
+ * Applica poi sort e grouping dinamico secondo `OrdinamentoMenu`.
+ *
+ * Restituisce `{ groups: MenuItemGroup[], menuFissi: MenuFisso[] }`:
+ * - `groups`: item raggruppati e ordinati (lista piatta = 1 gruppo senza titolo)
  * - `menuFissi`: menu a prezzo fisso (struttura diversa, renderizzati separatamente)
  *
  * Collection supportate: "piatti", "vini", "bevande", "birre", "liquori", "menu-fisso"
- *
- * Esempio: `sourceCollection: ["piatti", "vini"]` con `filterMode: "include"` e
- * `targetCategories` misti produrrà un array che contiene sia piatti filtrati
- * per `categoria-piatti` che vini filtrati per `categoria-vini`.
  */
 export function resolveMenuSection(
   sezione: SezioneMenuConfig,
@@ -351,8 +682,9 @@ export function resolveMenuSection(
   menuFissi: MenuFisso[],
   bevande: Bevanda[],
   birre: Birra[],
-  liquori: Liquore[]
-): { items: MenuItem[]; menuFissi: MenuFisso[] } {
+  liquori: Liquore[],
+  ordinamento: OrdinamentoMenu = {}
+): { groups: MenuItemGroup[]; menuFissi: MenuFisso[] } {
   const sources = sezione.sourceCollection ?? ["piatti"];
   const filterMode = sezione.filterMode ?? "all";
   const targetCategories = sezione.targetCategories ?? [];
@@ -378,12 +710,10 @@ export function resolveMenuSection(
         });
 
     mfRisolti.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
-    return { items: [], menuFissi: mfRisolti };
+    return { groups: [], menuFissi: mfRisolti };
   }
 
   // ── Logica Multi-Source Additiva ──────────────────────────────────────────
-  // Mappa sorgente → dati grezzi e converter. Scalabile: aggiungere una nuova
-  // collection richiede solo una voce in questa struttura.
   const sourceData: SourceData = { piatti, vini, bevande, birre, liquori };
 
   type SourceEntry =
@@ -411,7 +741,6 @@ export function resolveMenuSection(
       continue;
     }
 
-    // Recupera i target ID pertinenti solo a questa sorgente
     const targetIds = getTargetIdsForSource(source as SourceCollection, targetCategories, filterMode);
 
     if (filterMode !== "all" && targetCategories.length > 0 && targetIds.size === 0) {
@@ -421,7 +750,6 @@ export function resolveMenuSection(
       );
     }
 
-    // Applica il filtro e converti in MenuItem
     const filtered = applyFilter(
       entry.raw as Array<{ categoria?: unknown }>,
       targetIds,
@@ -432,13 +760,18 @@ export function resolveMenuSection(
     allItems.push(...converted);
   }
 
-  allItems.sort((a, b) => (a.ordine ?? 9999) - (b.ordine ?? 9999));
+  // Applica sort e grouping secondo la configurazione editoriale
+  const sourcesTyped = sources as SourceCollection[];
+  const primarySource = sourcesTyped.find((s) => s !== "menu-fisso");
+  const regole = getRegolePerSezione(sourcesTyped, ordinamento);
+  const groups = applyOrdinamento(allItems, regole, primarySource, ordinamento);
 
-  return { items: allItems, menuFissi: [] };
+  return { groups, menuFissi: [] };
 }
 
 /**
- * Risolve tutte le sezioni del menu-config a build-time.
+ * Risolve tutte le sezioni del menu-config a build-time,
+ * applicando sort e grouping secondo `OrdinamentoMenu`.
  */
 function resolveAllSezioni(
   sezioni: SezioneMenuConfig[],
@@ -447,16 +780,17 @@ function resolveAllSezioni(
   menuFissi: MenuFisso[],
   bevande: Bevanda[],
   birre: Birra[],
-  liquori: Liquore[]
+  liquori: Liquore[],
+  ordinamento: OrdinamentoMenu
 ): SezioneRisolta[] {
   return sezioni.map((sezione): SezioneRisolta => {
-    const { items, menuFissi: menuFissiRisolti } =
-      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori);
+    const { groups, menuFissi: menuFissiRisolti } =
+      resolveMenuSection(sezione, piatti, vini, menuFissi, bevande, birre, liquori, ordinamento);
 
     return {
       slug: sezione.slug,
       titolo: sezione.label,
-      items,
+      groups,
       menuFissi: menuFissiRisolti,
       isSpecialPeriod: false,
     };
@@ -535,7 +869,7 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
   const [
     piatti, vini, menuFissi, bevande, birre, liquori, allergeni,
     nazioniRaw, regioniRaw, zoneRaw,
-    menuConfigRaw, generaliRaw,
+    menuConfigRaw, generaliRaw, ordinamentoMenuRaw,
   ] = await Promise.all([
     fetchAllDocs<Piatto>("piatti", { where: '{"inLista":{"equals":true}}' }),
     fetchAllDocs<Vino>("vini", { where: '{"inLista":{"equals":true}}', depth: "1" }),
@@ -549,6 +883,7 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     fetchAllDocs<Zona>("zone").catch(() => [] as Zona[]),
     fetchGlobalSafe<MenuConfig>("menu-config"),
     fetchGlobalSafe<Generali>("generali"),
+    fetchGlobalSafe<OrdinamentoMenu>("ordinamento-menu", 1, true),
   ]);
 
   // Costruisce lookup map id→oggetto per la hydration geografica
@@ -597,9 +932,13 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     };
   }
 
-  // Risolvi tutte le sezioni a build-time (Query Builder) — usa le versioni hydrated
+  const ordinamentoMenu: OrdinamentoMenu = ordinamentoMenuRaw ?? FALLBACK_ORDINAMENTO_MENU;
+
+  // Risolvi tutte le sezioni a build-time (Query Builder + sort/group) — usa le versioni hydrated
   const sezioniRisolte = resolveAllSezioni(
-    menuConfig.standardItems!, piatti, viniHydrated, menuFissi, bevandeHydrated, birreHydrated, liquoriHydrated
+    menuConfig.standardItems!,
+    piatti, viniHydrated, menuFissi, bevandeHydrated, birreHydrated, liquoriHydrated,
+    ordinamentoMenu
   );
 
   return {
@@ -609,7 +948,7 @@ export async function getStaticMenuData(): Promise<StaticMenuData> {
     bevande: bevandeHydrated,
     birre: birreHydrated,
     liquori: liquoriHydrated,
-    categorie, allergeni, menuConfig, generali, sezioniRisolte,
+    categorie, allergeni, menuConfig, generali, ordinamentoMenu, sezioniRisolte,
   };
 }
 

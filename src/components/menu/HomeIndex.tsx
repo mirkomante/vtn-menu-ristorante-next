@@ -146,12 +146,13 @@ function EmptyIndex({ isOpen }: { isOpen: boolean }) {
 // ---------------------------------------------------------------------------
 
 export function HomeIndex({ staticData }: HomeIndexProps) {
-  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori, sezioniRisolte } = staticData;
 
   return (
     <MenuProvider
       menuConfig={menuConfig}
       generali={generali}
+      sezioniRisolte={sezioniRisolte}
       piatti={piatti}
       vini={vini}
       menuFissi={menuFissi}

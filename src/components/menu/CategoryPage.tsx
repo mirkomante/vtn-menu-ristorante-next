@@ -5,9 +5,9 @@
  *
  * Riceve una SezioneRisolta (già risolta dal Query Builder a build-time) e:
  * 1. Inizializza MenuProvider per il polling della disponibilità real-time.
- * 2. Passa items e menuFissi a MenuSection, che smista i tipi:
+ * 2. Passa groups e menuFissi a MenuSection, che smista i tipi:
  *    - MenuFissoCard per i menu a prezzo fisso (in cima)
- *    - DishCard per piatti, vini, bevande, birre, liquori
+ *    - DishCard per piatti, vini, bevande, birre, liquori (per gruppo)
  * 3. Filtra automaticamente i piatti esauriti tramite MenuSection.
  *
  * La sezione può contenere voci da più categorie (aggregazione virtuale)
@@ -78,7 +78,8 @@ function CategoryContent({ sezione }: CategoryContentProps) {
     slug: sezione.slug,
   };
 
-  const hasContent = sezione.items.length > 0 || sezione.menuFissi.length > 0;
+  const hasContent =
+    sezione.groups.some((g) => g.items.length > 0) || sezione.menuFissi.length > 0;
 
   return (
     <>
@@ -96,7 +97,7 @@ function CategoryContent({ sezione }: CategoryContentProps) {
           ) : (
             <MenuSection
               categoria={categoriaVirtuale}
-              items={sezione.items}
+              groups={sezione.groups}
               menuFissi={sezione.menuFissi}
               availability={availability}
             />
@@ -114,12 +115,13 @@ function CategoryContent({ sezione }: CategoryContentProps) {
 // ---------------------------------------------------------------------------
 
 export function CategoryPage({ staticData, sezione }: CategoryPageProps) {
-  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori, sezioniRisolte } = staticData;
 
   return (
     <MenuProvider
       menuConfig={menuConfig}
       generali={generali}
+      sezioniRisolte={sezioniRisolte}
       piatti={piatti}
       vini={vini}
       menuFissi={menuFissi}

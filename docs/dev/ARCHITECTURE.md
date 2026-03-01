@@ -181,7 +181,7 @@ per ogni source in sourceCollection:
 
 Questo permette combinazioni arbitrarie come `["piatti", "vini"]` con `filterMode: "include"` e `targetCategories` misti: i piatti vengono filtrati per `categoria-piatti` e i vini per `categoria-vini`, producendo un unico array ordinato.
 
-**Caso speciale — `menu-fisso`:** gestito separatamente perché `MenuFisso` ha una struttura dati diversa da `MenuItem` e viene reso in un layout dedicato. Se `sources` include `"menu-fisso"`, la funzione ritorna subito con `{ items: [], menuFissi: [...] }`.
+**Caso speciale — `menu-fisso`:** gestito separatamente perché `MenuFisso` ha una struttura dati diversa da `MenuItem` e viene reso in un layout dedicato. Se `sources` include `"menu-fisso"`, la funzione ritorna subito con `{ groups: [], menuFissi: [...] }`.
 
 **Scalabilità:** aggiungere una nuova collection richiede solo una voce nel `sourceMap` interno a `resolveMenuSection`. Non è necessario modificare la struttura del loop.
 
@@ -192,11 +192,125 @@ Questo permette combinazioni arbitrarie come `["piatti", "vini"]` con `filterMod
 ```
 menu-config.standardItems
   → normalizeStandardItems()   (aggiunge slug, normalizza tipi)
-  → resolveMenuSection()       (logica multi-source additiva per ogni sorgente)
-  → SezioneRisolta[]           (slug, titolo, items: MenuItem[], menuFissi: MenuFisso[])
+  → resolveMenuSection()       (logica multi-source additiva + sort/group da OrdinamentoMenu)
+  → SezioneRisolta[]           (slug, titolo, groups: MenuItemGroup[], menuFissi: MenuFisso[])
 ```
 
 La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
+
+## Global `ordinamento-menu` — Sort e Raggruppamento Dinamico
+
+Il global `ordinamento-menu` permette all'editor di configurare come ogni collection viene ordinata e raggruppata nel menu, senza modificare il codice.
+
+### Struttura reale del backend (verificata via API con `?depth=1`)
+
+I campi sono **flat** con prefisso collection — non oggetti annidati. Il global include anche gli array ordinati di categorie/tipologie che guidano il raggruppamento gerarchico:
+
+```json
+{
+  "piattiOrderBy": "nome",
+  "piattiOrderDirection": "asc",
+  "piattiGroupBy": "nessuno",
+  "categoriePiatti": [
+    { "id": 26, "nome": "Involtini", "elementi": { "docs": [201, 200, 189, ...] } },
+    { "id": 27, "nome": "Primi", "elementi": { "docs": [198, 197, ...] } }
+  ],
+  "viniOrderBy": "regione",
+  "viniOrderDirection": "asc",
+  "viniGroupBy": "nazione",
+  "tipologieVino": [
+    { "id": 21, "nome": "Bianchi" },
+    { "id": 23, "nome": "Rosati" },
+    { "id": 24, "nome": "Rossi" },
+    { "id": 25, "nome": "Spumanti" },
+    { "id": 22, "nome": "Champagne" }
+  ],
+  "liquoriOrderBy": "nome",
+  "liquoriOrderDirection": "asc",
+  "liquoriGroupBy": "nazione",
+  "tipologieLiquore": [ ... ],
+  "birreOrderBy": "order",
+  "birreOrderDirection": "asc",
+  "birreGroupBy": "nessuno",
+  "tipologieBirra": [],
+  "bevandeOrderBy": "order",
+  "bevandeOrderDirection": "asc",
+  "bevandeGroupBy": "nessuno",
+  "tipologieBevanda": []
+}
+```
+
+> **Nota fetch:** `ordinamento-menu` viene fetchato con `depth=1` e `cache: "no-store"` (non `revalidate`). Questo perché il global ha relazioni semplici che non richiedono `depth=2`, e il `no-store` evita che la cache di Next.js serva risposte obsolete in caso di aggiornamenti del CMS.
+
+### Default se non configurato
+
+| Campo | Default |
+|---|---|
+| `orderBy` | `"order"` (ordine manuale CMS) |
+| `orderDirection` | `"asc"` |
+| `groupBy` | `"nessuno"` (lista piatta) |
+
+### Valori `orderBy` disponibili
+
+| Valore | Campo usato per il sort | Note |
+|---|---|---|
+| `"order"` | `ordine` (numerico) | Ordine manuale CMS |
+| `"nome"` | `nome` | Alfabetico |
+| `"prezzo"` | `prezzo` | Numerico |
+| `"regione"` | `regione.nome` | Campo annidato — usato per vini |
+| `"nazione"` | `nazione.nome` | Campo annidato |
+| `"tipologia"` | `tipologia.nome` | Campo annidato |
+| `"categoria"` | `categoria.nome` | Campo annidato — usato per piatti |
+
+### Logica in `resolveMenuSection` — `applyOrdinamento`
+
+`applyOrdinamento` ha due path distinti, con priorità:
+
+**Path 1 — Array ordinato dal CMS (fonte di verità editoriale):**
+Se `ordinamento` contiene l'array per la `primarySource`, l'ordine dei gruppi è dettato da quel array. Questo path ha **priorità assoluta** sul `groupBy` dinamico:
+
+| `primarySource` | Array usato | Funzione |
+|---|---|---|
+| `piatti` | `categoriePiatti` | `groupPiattiByCategorie` |
+| `vini` | `tipologieVino` | `groupByTipologie` |
+| `liquori` | `tipologieLiquore` | `groupByTipologie` |
+| `birre` | `tipologieBirra` | `groupByTipologie` |
+| `bevande` | `tipologieBevanda` | `groupByTipologie` |
+
+Per i **piatti**: se la categoria ha `elementi.docs`, quell'array definisce anche l'ordine interno dei piatti nel gruppo (ordine esplicito CMS). Altrimenti si usa `piattiOrderBy` come sort di fallback.
+
+Per **vini/liquori/birre/bevande**: filtra per `tipologia.id`, ordina gli item interni con `{collection}OrderBy`.
+
+Item non assegnati a nessun gruppo → **"Altro"** (sempre in fondo).
+
+**Path 2 — Raggruppamento dinamico automatico (fallback):**
+Se l'array non è presente o è vuoto, usa `groupBy` + `groupItems` (raggruppamento per campo, ordine alfabetico dei gruppi).
+
+> **Nota:** il campo `order` (ordine manuale) è stato **rimosso dagli item singoli** del backend. L'ordinamento è ora centralizzato esclusivamente nel global `ordinamento-menu`. Se `orderBy: "order"` è configurato ma gli item non hanno il campo `ordine`, il sort è stabile ma non significativo.
+
+### Struttura `SezioneRisolta` aggiornata
+
+```typescript
+interface SezioneRisolta {
+  slug: string;
+  titolo: string;
+  groups: MenuItemGroup[];  // sostituisce items: MenuItem[]
+  menuFissi: MenuFisso[];
+  isSpecialPeriod: boolean;
+}
+
+interface MenuItemGroup {
+  title?: string;    // assente se groupBy === "nessuno"
+  items: MenuItem[];
+}
+```
+
+### Rendering in `MenuSection`
+
+- **Lista piatta** (`groupBy: "nessuno"`): un singolo `MenuItemGroup` senza `title` → nessun sottotitolo.
+- **Lista raggruppata**: un `MenuItemGroup` per ogni valore distinto → sottotitolo `h3` sticky per ogni gruppo.
+
+Il sottotitolo usa `sticky top-14` con `backdrop-blur` per rimanere visibile durante lo scroll.
 
 ## Flusso dati completo
 
@@ -222,11 +336,12 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 │    ├─ /api/liquori?where[inLista]=true&depth=1                  │
 │    ├─ /api/allergeni                                            │
 │    ├─ /api/globals/menu-config?depth=2  (fallback se vuoto)     │
-│    └─ /api/globals/generali?depth=2    (fallback se vuoto)      │
+│    ├─ /api/globals/generali?depth=2    (fallback se vuoto)      │
+│    └─ /api/globals/ordinamento-menu    (fallback se vuoto)      │
 │    Categorie estratte dai piatti (nessun endpoint dedicato)     │
 │    normalizeStandardItems() → aggiunge slug da label            │
 │    resolveAllSezioni() → sezioniRisolte[] (Query Builder)       │
-│      └─ ogni sezione: { items: MenuItem[], menuFissi: MenuFisso[] }
+│      └─ ogni sezione: { groups: MenuItemGroup[], menuFissi: MenuFisso[] }
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼  Firebase Hosting (CDN)
@@ -259,7 +374,7 @@ La pagina `/menu/[slug]` cerca direttamente in `sezioniRisolte` per slug.
 | `CategoryPage` | `src/components/menu/CategoryPage.tsx` | Client Component | Lista voci di una sezione virtuale con disponibilità real-time |
 | `MenuProvider` | `src/context/MenuContext.tsx` | Context Provider | Stato globale: sezioni, disponibilità, status |
 | `MenuHeader` | `src/components/menu/MenuHeader.tsx` | Client Component | Nome ristorante, orari settimanali, slot attivo, banner chiusura |
-| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, smista `MenuItem[]` → `DishCard` e `MenuFisso[]` → `MenuFissoCard` |
+| `MenuSection` | `src/components/menu/MenuSection.tsx` | Server-compatible | Filtra piatti esauriti, renderizza gruppi (`MenuItemGroup[]`) con sottotitoli sticky opzionali, smista `MenuItem` → `DishCard` e `MenuFisso[]` → `MenuFissoCard` |
 | `DishCard` | `src/components/menu/DishCard.tsx` | Server-compatible | Smart Component polimorfico per `MenuItem`: body variabile per `_type` (piatto/vino/birra/liquore/bevanda) |
 | `MenuFissoCard` | `src/components/menu/MenuFissoCard.tsx` | Server-compatible | Menu a prezzo fisso (`MenuFisso`): nome, prezzo, lista piatti inclusi, servizi aggiuntivi |
 | `MenuFooter` | `src/components/menu/MenuFooter.tsx` | Client Component | Indirizzo, social, copyright, annotazione Rich Text |
@@ -307,6 +422,7 @@ Usate come relazioni nei vini, birre, liquori e bevande. Non hanno endpoint dire
 | `/api/globals/menu-config?depth=2` | `MenuConfig` | `standardItems[]` | **Richiede `?depth=2`** per popolare `targetCategories.value`. Senza `depth=2` restituisce `{}`. |
 | `/api/vini?depth=2` | `Vino` | `nazione`, `regione`, `zona` | `depth=2` necessario per `regione.nazione`. Con `depth=1` la nazione della regione è solo un id numerico. |
 | `/api/globals/generali?depth=2` | `Generali` | `scheduleWeekly[]` | Orari in inglese (`"monday"`, ecc.), `lunchSlot`/`dinnerSlot` espliciti |
+| `/api/globals/ordinamento-menu?depth=1` | `OrdinamentoMenu` | `piattiOrderBy`, `viniGroupBy`, `categoriePiatti`, ecc. | Campi flat con prefisso collection + array ordinati di categorie/tipologie. Fetchato con `cache: "no-store"` (non `revalidate`) e `depth=1`. Opzionale — se assente, si usano i default (`orderBy: "order"`, `groupBy: "nessuno"`). |
 
 ### Nuovi campi di `MenuConfig` (aggiornamento backend)
 
@@ -349,6 +465,15 @@ if (section.activeDays?.length > 0 && !section.activeDays.includes(getTodayDayNa
 **Collections obbligatorie** (`fetchAllDocs`): lanciano eccezione se il backend non risponde → la build fallisce esplicitamente.
 
 **Globals opzionali** (`fetchGlobalSafe`): restituiscono `null` se il backend risponde con errore o con `{}` → si usano i valori di fallback hardcoded.
+
+**Firma di `fetchGlobalSafe`:**
+
+```typescript
+fetchGlobalSafe<T>(globalSlug: string, depth = 2, noCache = false): Promise<T | null>
+```
+
+- `depth`: profondità di popolamento delle relazioni (default `2`). Usare `1` per globals con relazioni semplici (es. `ordinamento-menu`).
+- `noCache`: se `true`, usa `cache: "no-store"` invece di `next: { revalidate: 3600 }`. Utile per globals che in passato hanno restituito risposte vuote in cache.
 
 **Casi di fallback per `menu-config`:**
 1. Backend risponde 500 → `null` → fallback

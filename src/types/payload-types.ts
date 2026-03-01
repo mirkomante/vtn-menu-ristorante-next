@@ -614,6 +614,150 @@ export interface Generali {
 }
 
 // ---------------------------------------------------------------------------
+// Global: OrdinamentoMenu — Regole di sort e raggruppamento per sezione
+// ---------------------------------------------------------------------------
+
+/**
+ * Criteri di ordinamento disponibili per ogni tipo di item.
+ *
+ * Struttura reale del backend (verificata via API):
+ * - `nome`:      ordine alfabetico per nome
+ * - `prezzo`:    ordine per prezzo crescente/decrescente
+ * - `order`:     ordine manuale definito nel CMS (campo `ordine`)
+ * - `regione`:   ordina per regione vinicola (campo annidato `regione.nome`) — usato per vini
+ * - `nazione`:   ordina per nazione (campo annidato `nazione.nome`)
+ * - `tipologia`: ordina per tipologia (campo annidato `tipologia.nome`)
+ * - `categoria`: ordina per categoria (campo annidato `categoria.nome`) — usato per piatti
+ */
+export type OrdinamentoOrderBy =
+  | "nome"
+  | "prezzo"
+  | "order"
+  | "regione"
+  | "nazione"
+  | "tipologia"
+  | "categoria";
+
+/** Direzione di ordinamento */
+export type OrdinamentoDirection = "asc" | "desc";
+
+/**
+ * Criteri di raggruppamento disponibili.
+ * - `nessuno`:   lista piatta, nessun sottotitolo di gruppo
+ * - `categoria`: raggruppa per categoria (piatti)
+ * - `tipologia`: raggruppa per tipologia (vini, bevande, birre, liquori)
+ * - `regione`:   raggruppa per regione vinicola (vini)
+ * - `nazione`:   raggruppa per nazione di provenienza (vini, birre, liquori, bevande)
+ */
+export type OrdinamentoGroupBy =
+  | "nessuno"
+  | "categoria"
+  | "tipologia"
+  | "regione"
+  | "nazione";
+
+/**
+ * Regole di ordinamento e raggruppamento per una singola collection.
+ * Estratte dai campi flat del global (es. `piattiOrderBy`, `viniGroupBy`).
+ */
+export interface OrdinamentoSezione {
+  orderBy?: OrdinamentoOrderBy;
+  orderDirection?: OrdinamentoDirection;
+  groupBy?: OrdinamentoGroupBy;
+}
+
+/**
+ * Categoria piatto nel global `ordinamento-menu`.
+ * Contiene l'elenco ordinato degli ID piatto appartenenti alla categoria.
+ */
+export interface OrdinamentoCategoriapiatto {
+  id: number;
+  nome: string;
+  /** Elenco ordinato degli ID piatto appartenenti a questa categoria */
+  elementi?: { docs: number[]; hasNextPage: boolean };
+}
+
+/**
+ * Tipologia generica (vino, liquore, birra, bevanda) nel global `ordinamento-menu`.
+ * L'ordine nell'array definisce l'ordine di visualizzazione dei gruppi.
+ */
+export interface OrdinamentoTipologia {
+  id: number;
+  nome: string;
+}
+
+/**
+ * Global "ordinamento-menu" — configurazione editoriale del sort e del raggruppamento.
+ *
+ * Struttura reale del backend (verificata via API):
+ * - Campi flat con prefisso collection per sort/direction/groupBy
+ *   (es. `piattiOrderBy`, `viniGroupBy`).
+ * - Array ordinati di categorie/tipologie che dettano l'ordine dei gruppi
+ *   (es. `categoriePiatti`, `tipologieVino`).
+ *
+ * Logica di priorità per il raggruppamento:
+ * 1. Se l'array di categorie/tipologie è presente e non vuoto → usa quello
+ *    come driver dell'ordine dei gruppi (fonte di verità editoriale).
+ * 2. Altrimenti → raggruppamento dinamico automatico (fallback).
+ *
+ * Default se il global non è configurato o un campo è assente:
+ * `orderBy: "order"`, `orderDirection: "asc"`, `groupBy: "nessuno"`.
+ */
+export interface OrdinamentoMenu {
+  id?: string | number;
+  /** Array ordinato di categorie piatti — definisce l'ordine dei gruppi */
+  categoriePiatti?: OrdinamentoCategoriapiatto[];
+  /** Ordinamento piatti */
+  piattiOrderBy?: OrdinamentoOrderBy;
+  piattiOrderDirection?: OrdinamentoDirection;
+  piattiGroupBy?: OrdinamentoGroupBy;
+  /** Array ordinato di tipologie vino — definisce l'ordine dei gruppi */
+  tipologieVino?: OrdinamentoTipologia[];
+  /** Ordinamento vini */
+  viniOrderBy?: OrdinamentoOrderBy;
+  viniOrderDirection?: OrdinamentoDirection;
+  viniGroupBy?: OrdinamentoGroupBy;
+  /** Array ordinato di tipologie bevanda */
+  tipologieBevanda?: OrdinamentoTipologia[];
+  /** Ordinamento bevande */
+  bevandeOrderBy?: OrdinamentoOrderBy;
+  bevandeOrderDirection?: OrdinamentoDirection;
+  bevandeGroupBy?: OrdinamentoGroupBy;
+  /** Array ordinato di tipologie birra */
+  tipologieBirra?: OrdinamentoTipologia[];
+  /** Ordinamento birre */
+  birreOrderBy?: OrdinamentoOrderBy;
+  birreOrderDirection?: OrdinamentoDirection;
+  birreGroupBy?: OrdinamentoGroupBy;
+  /** Array ordinato di tipologie liquore */
+  tipologieLiquore?: OrdinamentoTipologia[];
+  /** Ordinamento liquori */
+  liquoriOrderBy?: OrdinamentoOrderBy;
+  liquoriOrderDirection?: OrdinamentoDirection;
+  liquoriGroupBy?: OrdinamentoGroupBy;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Gruppo di item — unità di rendering gerarchico in MenuSection
+// ---------------------------------------------------------------------------
+
+/**
+ * Un gruppo di voci del menu all'interno di una sezione.
+ *
+ * - Se `title` è presente, MenuSection renderizza un sottotitolo (h3).
+ * - Una lista piatta corrisponde a un singolo gruppo senza titolo.
+ * - Gli item all'interno del gruppo sono già ordinati secondo `OrdinamentoMenu`.
+ */
+export interface MenuItemGroup {
+  /** Titolo del gruppo (es. nome regione, tipologia). Assente se `groupBy === "nessuno"`. */
+  title?: string;
+  /** Voci del menu appartenenti a questo gruppo */
+  items: MenuItem[];
+}
+
+// ---------------------------------------------------------------------------
 // Aggregato: tutti i dati statici necessari per la build
 // ---------------------------------------------------------------------------
 
@@ -630,8 +774,13 @@ export interface StaticMenuData {
   menuConfig: MenuConfig;
   generali: Generali;
   /**
-   * Sezioni già risolte a build-time: ogni sezione ha gli items (tipo unione)
-   * filtrati secondo la configurazione del Query Builder (filterMode + targetCategories).
+   * Configurazione editoriale di ordinamento e raggruppamento per collection.
+   * Recuperata dal global "ordinamento-menu". Se assente, si usano i default.
+   */
+  ordinamentoMenu: OrdinamentoMenu;
+  /**
+   * Sezioni già risolte a build-time: ogni sezione contiene gruppi di item
+   * già ordinati e raggruppati secondo `OrdinamentoMenu`.
    * Pronte per il rendering — non richiedono ulteriore elaborazione a runtime.
    */
   sezioniRisolte: SezioneRisolta[];
@@ -646,13 +795,24 @@ export type ActiveSlot = "lunch" | "dinner" | null;
 
 /**
  * Sezione del menu già risolta con i piatti/vini effettivi.
- * Prodotta da `useMenuStructure` a partire da `SezioneMenuConfig`.
+ * Prodotta da `resolveMenuSection` a build-time.
+ *
+ * Gli item sono organizzati in gruppi secondo la configurazione `OrdinamentoMenu`:
+ * - `groupBy === "nessuno"` → un singolo gruppo senza titolo (lista piatta)
+ * - `groupBy === "regione"` → un gruppo per ogni regione vinicola (es. Vini)
+ * - ecc.
+ *
+ * I Menu Fissi rimangono separati in `menuFissi` (struttura dati diversa).
  */
 export interface SezioneRisolta {
   slug: string;
   titolo: string;
-  /** Lista unificata di voci renderizzabili con MenuSection (piatti, vini, bevande, ecc.) */
-  items: MenuItem[];
+  /**
+   * Item raggruppati e ordinati secondo `OrdinamentoMenu`.
+   * Lista piatta = `[{ items: [...] }]` (un gruppo senza titolo).
+   * Raggruppata = `[{ title: "Toscana", items: [...] }, ...]`.
+   */
+  groups: MenuItemGroup[];
   menuFissi: MenuFisso[];
   isSpecialPeriod: boolean;
 }

@@ -90,31 +90,36 @@ export interface MenuProviderProps {
   children: React.ReactNode;
   menuConfig: MenuConfig;
   generali: Generali;
-  piatti: Piatto[];
-  vini: Vino[];
-  menuFissi: MenuFisso[];
-  bevande: Bevanda[];
-  birre: Birra[];
-  liquori: Liquore[];
+  /**
+   * Sezioni già risolte a build-time (con sort/group applicati da OrdinamentoMenu).
+   * Vengono filtrate a runtime solo per slot/giorno — sort e group non vengono
+   * ricalcolati lato client.
+   */
+  sezioniRisolte: SezioneRisolta[];
+  /**
+   * Passati per retrocompatibilità con i componenti esistenti.
+   * Non vengono usati direttamente dal provider — le sezioni sono già risolte.
+   */
+  piatti?: Piatto[];
+  vini?: Vino[];
+  menuFissi?: MenuFisso[];
+  bevande?: Bevanda[];
+  birre?: Birra[];
+  liquori?: Liquore[];
 }
 
 export function MenuProvider({
   children,
   menuConfig,
   generali,
-  piatti,
-  vini,
-  menuFissi,
-  bevande,
-  birre,
-  liquori,
+  sezioniRisolte,
 }: MenuProviderProps) {
   // --- Stato temporale ---
   const { isOpen, activeSlot, isHoliday, closureMessage } =
     useTimekeeper(generali);
 
-  // --- Sezioni risolte ---
-  const sections = useMenuStructure({ menuConfig, activeSlot, piatti, vini, menuFissi, bevande, birre, liquori });
+  // --- Sezioni risolte: filtro per slot/giorno sulle sezioni pre-calcolate dalla build ---
+  const sections = useMenuStructure({ sezioniRisolte, menuConfig, activeSlot });
 
   // --- Navigazione logica ---
   const [activeCategory, setActiveCategoryState] = useState<string | null>(

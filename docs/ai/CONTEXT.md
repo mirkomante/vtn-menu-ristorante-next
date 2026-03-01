@@ -72,7 +72,17 @@ type MenuItem =
 
 Il campo `_type` è aggiunto da `api.ts` (funzioni `piattoToItem`, `vinoToItem`, ecc.) — **non esiste nel backend**.
 
-`SezioneRisolta.items: MenuItem[]` è la lista unificata passata a `MenuSection` → `DishCard`. I menu fissi (pranzo, degustazione) hanno struttura diversa (`MenuFisso`) e vengono renderizzati con `MenuFissoCard` tramite `SezioneRisolta.menuFissi: MenuFisso[]`.
+`SezioneRisolta.groups: MenuItemGroup[]` contiene i gruppi di item già ordinati e raggruppati secondo il global `ordinamento-menu`. I menu fissi (pranzo, degustazione) hanno struttura diversa (`MenuFisso`) e vengono renderizzati con `MenuFissoCard` tramite `SezioneRisolta.menuFissi: MenuFisso[]`.
+
+**Struttura `MenuItemGroup`:**
+```typescript
+interface MenuItemGroup {
+  title?: string;    // es. "Toscana", "Rossi" — assente se groupBy === "nessuno"
+  items: MenuItem[];
+}
+```
+
+**Lista piatta** = `[{ items: [...] }]` (un gruppo senza titolo). **Lista raggruppata** = `[{ title: "Toscana", items: [...] }, ...]`.
 
 **Regola:** usa `MenuFissoCard` per i menu strutturati a prezzo fisso, `DishCard` polimorfica per tutto il resto (`MenuItem`). Non passare mai un `Piatto` grezzo a `DishCard` — aggiungere `_type: "piatto"` prima.
 
@@ -84,9 +94,82 @@ Il campo `_type` è aggiunto da `api.ts` (funzioni `piattoToItem`, `vinoToItem`,
 
 **`MenuFissoCard`** mostra: nome + prezzo totale, descrizione (italic), lista piatti inclusi (rientrata), servizi aggiuntivi (badge). Richiede che `menu-fisso` sia fetchato con `?depth=2` per avere `piatti` e `servizi` popolati.
 
-**`MenuSection`** accetta sia `items: MenuItem[]` che `menuFissi: MenuFisso[]` e può gestirli contemporaneamente. I menu fissi vengono mostrati prima degli item sciolti. Se entrambi sono vuoti, restituisce `null`.
+**`MenuSection`** accetta `groups: MenuItemGroup[]` e `menuFissi: MenuFisso[]`. Le sezioni possono essere raggruppate (es. Vini per Regione). Il componente `MenuSection` gestisce questo rendering gerarchico: se un gruppo ha `title`, renderizza un sottotitolo `h3` sticky; altrimenti lista piatta senza sottotitolo. I menu fissi vengono mostrati prima dei gruppi di item. Se entrambi sono vuoti, restituisce `null`.
 
 ---
+
+## Global `ordinamento-menu` — Sort e Raggruppamento
+
+Il global `ordinamento-menu` configura come ogni collection viene **ordinata** e **raggruppata** nel menu. Viene fetchato a build-time con `depth=1` e `cache: "no-store"`, poi passato a `resolveMenuSection()`.
+
+> **Stato attuale (verificato):** il backend risponde `200 OK` con dati completi. Il global è configurato e attivo.
+
+**Struttura reale del backend — campi flat con prefisso collection + array ordinati:**
+
+```json
+{
+  "piattiOrderBy": "nome",       "piattiOrderDirection": "asc",  "piattiGroupBy": "nessuno",
+  "categoriePiatti": [
+    { "id": 26, "nome": "Involtini", "elementi": { "docs": [201, 200, 189, ...] } },
+    { "id": 27, "nome": "Primi",     "elementi": { "docs": [198, 197, ...] } },
+    { "id": 29, "nome": "Specialità pesce", "elementi": { "docs": [...] } },
+    { "id": 28, "nome": "Specialità carne", "elementi": { "docs": [...] } },
+    { "id": 30, "nome": "Specialità vegetariane", "elementi": { "docs": [...] } }
+  ],
+  "viniOrderBy": "regione",      "viniOrderDirection": "asc",    "viniGroupBy": "nazione",
+  "tipologieVino": [
+    { "id": 21, "nome": "Bianchi" }, { "id": 23, "nome": "Rosati" },
+    { "id": 24, "nome": "Rossi" },   { "id": 25, "nome": "Spumanti" },
+    { "id": 22, "nome": "Champagne" }
+  ],
+  "liquoriOrderBy": "nome",      "liquoriOrderDirection": "asc", "liquoriGroupBy": "nazione",
+  "tipologieLiquore": [
+    { "id": 31, "nome": "Distillati vietnamiti" }, { "id": 29, "nome": "Amari e Liquori" },
+    { "id": 32, "nome": "Grappe" }, { "id": 34, "nome": "Vin Doux Naturel" },
+    { "id": 30, "nome": "Calvados" }, { "id": 35, "nome": "Whisky" }, { "id": 33, "nome": "Rum" }
+  ],
+  "birreOrderBy": "order",       "birreOrderDirection": "asc",   "birreGroupBy": "nessuno",
+  "tipologieBirra": [],
+  "bevandeOrderBy": "order",     "bevandeOrderDirection": "asc", "bevandeGroupBy": "nessuno",
+  "tipologieBevanda": []
+}
+```
+
+**Default se il global non è configurato:** `orderBy: "order"`, `orderDirection: "asc"`, `groupBy: "nessuno"` (lista piatta).
+
+**Valori `orderBy` disponibili** — alcuni corrispondono a campi annidati:
+- `"order"` → `ordine` (numerico, ordine manuale CMS) — **il campo `order` è stato rimosso dagli item singoli; l'ordinamento è centralizzato nel global**
+- `"nome"` → `nome`
+- `"prezzo"` → `prezzo`
+- `"regione"` → `regione.nome` (campo annidato, usato per vini)
+- `"nazione"` → `nazione.nome` (campo annidato)
+- `"tipologia"` → `tipologia.nome` (campo annidato)
+- `"categoria"` → `categoria.nome` (campo annidato)
+
+**Campi `groupBy` disponibili:**
+- `"nessuno"` → lista piatta (un gruppo senza titolo)
+- `"categoria"` → raggruppa per `categoria.nome` (piatti)
+- `"tipologia"` → raggruppa per `tipologia.nome` (vini, birre, bevande, liquori)
+- `"regione"` → raggruppa per `regione.nome` (vini)
+- `"nazione"` → raggruppa per `nazione.nome` (vini, birre, liquori, bevande)
+
+**Item senza valore nel campo di raggruppamento** → finiscono nel gruppo **"Altro"** (sempre in fondo).
+
+**Regola:** la `primarySource` (prima sorgente non-`menu-fisso` in `sourceCollection`) determina quale prefisso usare (es. `vini` → legge `viniOrderBy`, `viniGroupBy`). Per sezioni multi-source (es. `["bevande", "birre"]`), si usano le regole della prima sorgente (`bevande`).
+
+**Logica di priorità per il raggruppamento (`applyOrdinamento`) — due path:**
+
+**Path 1 — Array ordinato CMS (fonte di verità, priorità assoluta):**
+Se `ordinamento` contiene l'array per la `primarySource` (`categoriePiatti`, `tipologieVino`, ecc.) → usa quello come driver dell'ordine dei gruppi. Il `groupBy` configurato viene ignorato.
+
+Per i **piatti**: se la categoria ha `elementi.docs`, quell'array definisce anche l'ordine interno dei piatti nel gruppo (ordine esplicito CMS). Altrimenti si usa `piattiOrderBy` come sort di fallback.
+
+Per **vini/liquori/birre/bevande**: filtra per `tipologia.id`, ordina gli item interni con `{collection}OrderBy`.
+
+**Path 2 — Raggruppamento dinamico automatico (fallback):**
+Se l'array non è presente o è vuoto, usa `groupBy` + `groupItems` (raggruppamento per campo, ordine alfabetico dei gruppi).
+
+Item non assegnati a nessun gruppo → **"Altro"** (sempre in fondo).
 
 ## Come il sistema decide cosa mostrare
 
@@ -99,10 +182,10 @@ Tre livelli di decisione, eseguiti in sequenza:
    └─ Output: isOpen (bool), activeSlot ('lunch'|'dinner'|null), isHoliday (bool)
 
 2. COSA mostriamo?
-   useMenuStructure({ menuConfig, activeSlot, piatti, vini, menuFissi, bevande, birre, liquori })
-   └─ Filtra sezioni per visibility ("always"/"lunch_only"/"dinner_only")
-   └─ Chiama resolveMenuSection() per ogni sezione → items: MenuItem[]
-   └─ Output: SezioneRisolta[] (sezioni con items già popolati)
+   useMenuStructure({ sezioniRisolte, menuConfig, activeSlot })
+   └─ Filtra sezioniRisolte (già pronte dalla build) per visibility/activeDays
+   └─ NON ricalcola sort/group — usa i dati pre-calcolati
+   └─ Output: SezioneRisolta[] (filtrate per slot/giorno)
 
 3. COSA è disponibile?
    getRealTimeAvailability() → polling ogni 5 min
@@ -270,6 +353,15 @@ Tre livelli di decisione, eseguiti in sequenza:
 
 **Non hanno endpoint REST proprio.** Vengono estratte a build-time dai piatti (`piatto.categoria` è embedded). Lo slug viene generato con `slugify(nome)`.
 
+### `fetchGlobalSafe` — firma e comportamento
+
+```typescript
+fetchGlobalSafe<T>(globalSlug: string, depth = 2, noCache = false): Promise<T | null>
+```
+
+- `depth`: profondità relazioni (default `2`). Usare `1` per `ordinamento-menu` (relazioni semplici).
+- `noCache`: se `true`, usa `cache: "no-store"` invece di `next: { revalidate: 3600 }`. Attivo per `ordinamento-menu` per evitare che la cache Next.js serva risposte obsolete.
+
 ### Globals — comportamento di fallback
 
 | Scenario | Comportamento |
@@ -313,20 +405,23 @@ app/menu/[slug]/page.tsx (Server)
   └─ <CategoryPage staticData sezione />
 
 CategoryPage (Client)
-  └─ <MenuProvider menuConfig generali piatti vini menuFissi bevande birre liquori>
+  └─ <MenuProvider sezioniRisolte menuConfig generali>
        └─ getRealTimeAvailability → availability
        └─ <CategoryContent sezione>
             ├─ <MenuHeader />
             ├─ <BackButton /> → Link href="/"
-            ├─ sezione.items.length > 0 →
-            │    <MenuSection categoria={virtuale} items={sezione.items} availability />
-            │      └─ itemsVisibili.map(item => <DishCard item />)
+            ├─ sezione.groups.length > 0 →
+            │    <MenuSection groups={sezione.groups} availability />
+            │      └─ groups.map(group =>
+            │           group.title → <h3 sticky>
+            │           group.items.filter(disponibile).map(item => <DishCard item />)
+            │         )
             ├─ sezione.menuFissi.length > 0 →
             │    layout dedicato con nome + prezzo per ogni MenuFisso
             └─ <MenuFooter />
 ```
 
-**Regola:** `sezione.items` contiene già le voci filtrate dal Query Builder (logica multi-source additiva: ogni sorgente filtrata indipendentemente per `filterMode` + `targetCategories`, poi unite). `MenuSection` filtra ulteriormente per disponibilità real-time (solo `_type === "piatto"`). `DishCard` non sa nulla di disponibilità. `MenuFissoCard` non ha logica di disponibilità — i menu fissi sono sempre visibili.
+**Regola:** `sezione.groups` contiene già le voci filtrate dal Query Builder, ordinate e raggruppate secondo `OrdinamentoMenu` — calcolate a **build-time** e mai ricalcolate a runtime. `MenuSection` filtra ulteriormente per disponibilità real-time (solo `_type === "piatto"`). `DishCard` non sa nulla di disponibilità. `MenuFissoCard` non ha logica di disponibilità — i menu fissi sono sempre visibili.
 
 **Regola:** `MenuProvider` è presente in **entrambe** le pagine. È necessario anche nella pagina dettaglio per il polling della disponibilità real-time.
 
@@ -348,7 +443,7 @@ CategoryPage (Client)
 
 - `"use client"` solo dove serve interattività o hook React. Tutto il resto è Server Component.
 - Non ricreare la struttura visiva di `DishCard` — importa e usa il componente esistente.
-- `DishCard` accetta `item: MenuItem` (non `piatto: Piatto`). `MenuSection` accetta `items: MenuItem[]` (non `piatti: Piatto[]`).
+- `DishCard` accetta `item: MenuItem` (non `piatto: Piatto`). `MenuSection` accetta `groups: MenuItemGroup[]` (non `items: MenuItem[]` direttamente).
 - Non aggiungere bordi, background o shadow ai wrapper di `MenuSection` — layout aperto.
 
 ### Design System
@@ -419,6 +514,7 @@ Il sistema è progettato per non crashare mai in produzione:
 | Backend Payload irraggiungibile a build-time | Build fallisce esplicitamente (errore chiaro in CI) |
 | Global `menu-config` → 500 o `{}` | Fallback hardcoded, build continua |
 | Global `generali` → 500 o `{}` | Fallback hardcoded, build continua |
+| Global `ordinamento-menu` → 500 o `{}` | Fallback `{}` → default (`orderBy: "order"`, `groupBy: "nessuno"`) |
 | `menu-config.standardItems` vuoto | Sezioni auto-generate dalle categorie dei piatti |
 | `menu-config` fetchato senza `?depth=2` | `targetCategories.value` è `undefined` → sezioni vuote |
 | GCS irraggiungibile a runtime | `availability = null` → tutto mostrato come disponibile |

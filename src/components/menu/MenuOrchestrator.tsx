@@ -78,7 +78,7 @@ function MenuContent({ categorieMap }: { categorieMap: CategorieMap }) {
                 <MenuSection
                   key={sezione.slug}
                   categoria={categoria}
-                  items={sezione.items}
+                  groups={sezione.groups}
                   availability={availability}
                 />
               );
@@ -116,7 +116,7 @@ function EmptyMenu({ isOpen }: { isOpen: boolean }) {
 // ---------------------------------------------------------------------------
 
 export function MenuOrchestrator({ staticData }: MenuOrchestratorProps) {
-  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori, categorie } = staticData;
+  const { menuConfig, generali, piatti, vini, menuFissi, bevande, birre, liquori, categorie, sezioniRisolte } = staticData;
 
   // Mappa slug → CategoriaMenu costruita una volta sola (stabile tra i render)
   const categorieMap: CategorieMap = new Map(
@@ -127,6 +127,7 @@ export function MenuOrchestrator({ staticData }: MenuOrchestratorProps) {
     <MenuProvider
       menuConfig={menuConfig}
       generali={generali}
+      sezioniRisolte={sezioniRisolte}
       piatti={piatti}
       vini={vini}
       menuFissi={menuFissi}

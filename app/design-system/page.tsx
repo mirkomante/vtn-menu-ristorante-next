@@ -9,7 +9,7 @@
 
 import { Badge, Button, Container, Heading, Text } from "@/components/ui";
 import { DishCard, MenuSection } from "@/components/menu";
-import type { CategoriaMenu, MenuItem, Piatto } from "@/types";
+import type { CategoriaMenu, MenuItemGroup, MenuItem, Piatto } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Dati palette
@@ -594,7 +594,7 @@ export default function DesignSystemPage() {
 
         <MenuSection
           categoria={DUMMY_CATEGORIA}
-          items={DUMMY_PIATTI}
+          groups={[{ items: DUMMY_PIATTI } satisfies MenuItemGroup]}
           availability={DUMMY_AVAILABILITY}
         />
 

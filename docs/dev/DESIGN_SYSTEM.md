@@ -200,18 +200,20 @@ Wrapper centrato `max-w-4xl` con padding responsive:
 
 ### MenuSection — Smistamento tipi
 
-`MenuSection` accetta sia `items: MenuItem[]` che `menuFissi: MenuFisso[]`. I menu fissi vengono renderizzati per primi (con `MenuFissoCard`), poi gli item sciolti (con `DishCard`).
+`MenuSection` accetta `groups: MenuItemGroup[]` e `menuFissi: MenuFisso[]`. I menu fissi vengono renderizzati per primi (con `MenuFissoCard`), poi i gruppi di item (con `DishCard`). Se un gruppo ha `title`, viene renderizzato un sottotitolo `h3` sticky prima degli item del gruppo.
 
 ```tsx
-// ✅ Solo items
-<MenuSection categoria={cat} items={sezione.items} availability={availability} />
+// ✅ Solo gruppi di item
+<MenuSection groups={sezione.groups} availability={availability} />
 
 // ✅ Solo menu fissi
-<MenuSection categoria={cat} menuFissi={sezione.menuFissi} />
+<MenuSection groups={[]} menuFissi={sezione.menuFissi} />
 
-// ✅ Misto (raro): menu fissi in cima, poi item sciolti
-<MenuSection categoria={cat} items={sezione.items} menuFissi={sezione.menuFissi} availability={availability} />
+// ✅ Misto: menu fissi in cima, poi gruppi di item
+<MenuSection groups={sezione.groups} menuFissi={sezione.menuFissi} availability={availability} />
 ```
+
+> **Nota:** `sezione.groups` contiene già i gruppi ordinati e raggruppati secondo `OrdinamentoMenu`, calcolati a build-time. Non passare `items: MenuItem[]` direttamente — la prop non esiste più.
 
 ### Sezione menu — Layout aperto
 
