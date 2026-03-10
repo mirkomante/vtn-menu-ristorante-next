@@ -1,0 +1,120 @@
+---
+description: Pattern componenti React — applicare quando si crea o modifica un componente in src/components/
+alwaysApply: false
+globs: ["src/components/**/*.tsx", "app/**/*.tsx"]
+---
+
+# Pattern Componenti — Frontend Menu
+
+## Regola client vs server component
+
+```typescript
+// Server-compatible (default — preferire sempre quando possibile)
+// Nessuna direttiva — nessun hook, nessun event listener
+export function DishCard({ item }: Props) { ... }
+
+// Client component — solo se necessario (hooks, eventi, polling)
+'use client'
+export function MenuProvider({ children }: Props) { ... }
+```
+
+Componenti attualmente `'use client'`: `HomeIndex`, `CategoryPage`, `MenuProvider`, `StickyNav`, `MenuOrchestrator`.
+Tutto il resto è server-compatible.
+
+## Componenti UI atomici — usare sempre quelli esistenti
+
+Non creare nuovi atomi se esiste già quello giusto:
+
+```typescript
+import { Badge }     from '@/components/ui/Badge'       // varianti: default|highlight|gold|outline|allergen
+import { Button }    from '@/components/ui/Button'       // varianti: primary|outline|ghost
+import { Heading }   from '@/components/ui/Typography'   // level: 1|2|3|4 — font Philosopher
+import { Text }      from '@/components/ui/Typography'   // variant: lead|body|small|caption
+import { Container } from '@/components/ui/Container'    // max-w-4xl, padding responsive
+```
+
+## Varianti Badge — semantica precisa
+
+| Variante | Uso |
+|---|---|
+| `default` | Tipologia, certificazione, capacità — info neutra |
+| `highlight` | Flag dietetici (glutenFree, vegan, noUovo, noLatticini) |
+| `gold` | Informazioni premium / in evidenza |
+| `outline` | Info secondaria, outline senza riempimento |
+| `allergen` | Allergeni — semantica di avvertenza |
+
+## DishCard — componente polimorfico centrale
+
+Non creare componenti separati per ogni tipo di voce menu.
+Usare sempre `DishCard` con il campo `_type` come discriminante:
+
+```typescript
+// ✅ CORRETTO
+<DishCard item={item} isAvailable={isAvailable} />
+
+// ❌ SBAGLIATO — non creare PiattoCard, VinoCard, ecc.
+```
+
+Per aggiungere un nuovo tipo di voce (es. cocktail se non ancora gestito):
+1. Aggiungere il tipo a `MenuItem` in `src/types/payload-types.ts`
+2. Aggiungere il sub-componente `CocktailBody` in `DishCard.tsx`
+3. Aggiungere il case nello switch `_type`
+
+## MenuSection — gestione disponibilità
+
+`MenuSection` filtra i piatti esauriti/nascosti. Il filtro si applica **solo a `_type === 'piatto'`**.
+I vini e le altre bevande non sono ancora filtrati dalla disponibilità GCS (⚠️ feature mancante).
+
+```typescript
+// Comportamento attuale in MenuSection:
+const isAvailable = item._type === 'piatto'
+  ? availability?.piatti[item.id]?.stato !== 'esaurito'
+  : true   // ⚠️ vini/birre/ecc. sempre disponibili
+```
+
+## LexicalRenderer — Rich Text da Payload
+
+Per renderizzare campi `richText` Lexical di Payload, usare sempre `LexicalRenderer`:
+
+```typescript
+import { LexicalRenderer } from '@/components/menu/LexicalRenderer'
+
+<LexicalRenderer content={menuConfig.annotazione} className="text-sm" />
+```
+
+Non installare `@payloadcms/richtext-lexical` nel frontend — il renderer custom è sufficiente
+e mantiene il bundle leggero.
+
+## Container — wrapper centrato standard
+
+```typescript
+// ✅ CORRETTO — usare sempre Container per il layout principale
+<Container padding="default" as="main">
+  {/* contenuto */}
+</Container>
+
+// Padding disponibili: "default" | "tight" | "none"
+// Tag disponibili: div | section | main | article | header | footer | nav
+```
+
+## Props — convenzioni
+
+```typescript
+// ✅ Sempre tipare le props esplicitamente
+interface DishCardProps {
+  item: MenuItem
+  isAvailable?: boolean   // default: true
+  className?: string      // default: ""
+}
+
+// ✅ Usare default parameter, non defaultProps
+function DishCard({ item, isAvailable = true, className = "" }: DishCardProps) { ... }
+```
+
+## Aggiunta nuovo componente — checklist
+
+1. Decidere: server-compatible o `'use client'`?
+2. Posizionare in `src/components/ui/` (atomo) o `src/components/menu/` (dominio)
+3. Esportare dal barrel `src/components/menu/index.ts` se è un componente di dominio
+4. Creare `docs/components/<NomeComponente>.md` con: props, scopo, note
+5. Aggiornare `docs/CHANGELOG.md`

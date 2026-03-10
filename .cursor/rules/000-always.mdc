@@ -1,0 +1,60 @@
+---
+description: Regole universali — si applicano a OGNI task in questo repository
+alwaysApply: true
+---
+
+# Regole universali — Frontend Menu (Next.js SSG)
+
+## Stack di riferimento (non aggiornare senza istruzione esplicita)
+
+| Componente | Versione |
+|---|---|
+| Next.js | 16.1.6 (App Router) |
+| React | 19.2.3 |
+| TypeScript | ^5 (strict mode) |
+| Tailwind CSS | ^4 (configurazione CSS-first, no tailwind.config.ts) |
+| Package manager | pnpm |
+| Build | `next build --webpack` (Turbopack disabilitato — problemi con next/font in SSG) |
+| Output | `output: 'export'` — SSG puro, nessun server a runtime |
+| Deploy | Firebase Hosting (cartella `out/`) |
+
+## Strategia rendering — SSG puro
+
+Questo è un sito **completamente statico**. Nessun SSR, nessun middleware, nessuna Route Handler.
+- Tutti i dati vengono fetchati a **build-time** da PayloadCMS
+- L'unica eccezione è la disponibilità piatti: polling client-side ogni 5 min da GCS
+- Non introdurre mai `'use server'`, `revalidatePath`, `unstable_cache` o fetch dinamiche a runtime
+
+## TypeScript — regole rigide
+
+- Zero `any` — mai, nessuna eccezione
+- Tutti i tipi Payload sono in `src/types/payload-types.ts` — importare da lì
+- Importare sempre da `@/types` (barrel `src/types/index.ts`)
+- ID Payload sono **numerici** (`id: number`), non UUID
+
+## Lingua
+
+- Codice e commenti in **inglese**
+- Contenuti UI (label, testi) vengono dal CMS in italiano — non hardcodare testi italiani
+
+## Regola obbligatoria — aggiornamento /docs
+
+**Il task NON è completato finché /docs non è aggiornato.**
+
+Prima di dichiarare il task completato, esegui obbligatoriamente:
+
+1. **Nuovo componente creato** → crea `docs/components/<NomeComponente>.md`
+2. **Nuova pagina / route** → crea `docs/pages/<route>.md`
+3. **Endpoint Payload aggiunto** → aggiorna `docs/api-integration.md`
+4. **Tipo TypeScript modificato** → aggiorna `docs/api-integration.md`
+5. **SEMPRE** → aggiorna `docs/CHANGELOG.md` con:
+   - Data (YYYY-MM-DD), descrizione, file coinvolti
+6. **Documentazione non allineata trovata** → correggila, segnala con `⚠️` nel CHANGELOG
+
+## Cosa non toccare mai senza istruzione esplicita
+
+- `app/globals.css` — contiene il tema Tailwind v4 (`@theme`), modifiche impattano l'intera UI
+- `src/types/payload-types.ts` — sincronizzato con il backend, non modificare manualmente
+- `src/lib/api.ts` — logica di fetch critica usata a build-time
+- `src/context/MenuContext.tsx` — provider globale con polling e stato runtime
+- `next.config.ts` — `output: 'export'` e `--webpack` sono intenzionali, non rimuovere

@@ -1,0 +1,92 @@
+---
+description: Tailwind CSS v4, palette colori e regole di contrasto — applicare quando si lavora su stili, nuovi componenti o app/globals.css
+alwaysApply: false
+globs: ["app/globals.css", "src/components/**/*.tsx", "app/**/*.tsx"]
+---
+
+# Styling System — Frontend Menu
+
+## Tailwind CSS v4 — configurazione CSS-first
+
+Non esiste `tailwind.config.ts`. Tutti i token del tema sono in `app/globals.css` nel blocco `@theme`.
+Per aggiungere un nuovo token: modificare `app/globals.css`, non cercare un file di config JS.
+
+## Palette colori — usare SOLO questi token
+
+| Token | Classe Tailwind | Valore | Uso |
+|---|---|---|---|
+| `background` | `bg-background` | `#FFEDD7` | **Sfondo pagina — sempre e solo questo** |
+| `surface` | `bg-surface` | `#FFFFFF` | Solo modal, form, overlay |
+| `surface-dark` | `text-surface-dark` | `#460112` | **SOLO come colore testo** — mai come sfondo |
+| `text-main` | `text-text-main` | `#080F2C` | Testo principale (Blu Notte) |
+| `text-light` | `text-text-light` | `#FFEDD7` | Testo su sfondi scuri |
+| `text-muted` | `text-text-muted` | `rgba(8,15,44,0.7)` | Testi secondari, descrizioni |
+| `accent-gold` | `text-accent-gold` | `#F8B624` | Prezzi, icone, link, accenti |
+| `accent-orange` | `bg-accent-orange` | `#EF5808` | Badge highlight, dettagli vivaci |
+
+## Regole di contrasto — OBBLIGATORIE
+
+```
+bg-background (#FFEDD7)  →  text-text-main ✅  text-text-muted ✅  text-surface-dark ✅
+bg-surface    (#FFFFFF)  →  text-text-main ✅  text-text-muted ✅
+bg-text-main  (#080F2C)  →  text-text-light ✅  text-accent-gold ✅
+bg-surface-dark          →  ❌ MAI USARE COME SFONDO (insufficiente contrasto)
+```
+
+**⚠️ Eccezione nota**: `StickyNav` usa `bg-surface-dark/95` — questo è un bug esistente,
+non replicare questo pattern in nuovi componenti.
+
+## Tipografia — font
+
+```typescript
+// Font Philosopher (serif) — per titoli
+// Usare via componente Heading o classe font-serif
+className="font-serif"    // Philosopher — livelli heading
+
+// Font DM Sans (sans) — per testi
+// Usare via componente Text o classe font-sans
+className="font-sans"     // DM Sans — corpo e caption
+```
+
+Non usare `font-mono` per testi visibili all'utente finale.
+
+## Layout — Container sempre
+
+```typescript
+// ✅ CORRETTO — max-w-4xl con padding responsive
+<Container padding="default" as="main">
+
+// ❌ SBAGLIATO — non replicare manualmente il layout
+<div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+```
+
+## Breakpoint responsive
+
+Tailwind v4 default: `sm` (640px), `md` (768px), `lg` (1024px), `xl` (1280px).
+Il menu è pensato principalmente per **mobile** (QR code da smartphone).
+Progettare mobile-first.
+
+## Dark mode
+
+Non implementata. Il tema è fisso "Warm & Elegant".
+Non aggiungere classi `dark:` senza istruzione esplicita.
+
+## Bordi e separatori
+
+```typescript
+// Stile Minimal B2 — usato in DishCard e separatori
+className="border-b border-surface-dark/20"
+
+// Non usare border-gray-* — usare solo i token del tema
+```
+
+## Aggiunta nuovo token al tema
+
+```css
+/* app/globals.css — dentro il blocco @theme */
+@theme {
+  --color-nuovo-token: #HEX;
+}
+```
+
+Poi documentare in `docs/CHANGELOG.md` la motivazione del nuovo token.

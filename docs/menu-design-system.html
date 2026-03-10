@@ -1,0 +1,3010 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu Design System — Vietnamonamour</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =====================================================================
+       MENU DESIGN SYSTEM — Vietnamonamour
+       Estende: design-system.html (base)
+       Non ridefinisce token base — li referenzia via var()
+       ===================================================================== */
+
+    /* --- Token base ereditati (specchio di globals.css / @theme) --------- */
+    :root {
+      --font-serif: 'Philosopher', Georgia, serif;
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+
+      /* Colori base — NON modificare */
+      --color-background:    #ffedd7;   /* bg-background  | Panna */
+      --color-surface:       #ffffff;   /* bg-surface     | Bianco */
+      --color-surface-dark:  #460112;   /* text-surface-dark (SOLO testo!) | Marrone scuro */
+      --color-text-main:     #080f2c;   /* text-text-main | Blue notte */
+      --color-text-light:    #ffedd7;   /* text-text-light | Panna */
+      --color-text-muted:    rgba(8,15,44,0.7); /* text-text-muted */
+      --color-accent-gold:   #f8b624;   /* text-accent-gold | Giallo */
+      --color-accent-orange: #ef5808;   /* bg-accent-orange | Arancione */
+
+      --radius-sm:   0.25rem;
+      --radius-md:   0.375rem;
+      --radius-lg:   0.5rem;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 3px rgba(8,15,44,.08), 0 1px 2px rgba(8,15,44,.06);
+      --shadow-md: 0 4px 6px rgba(8,15,44,.07), 0 2px 4px rgba(8,15,44,.06);
+      --shadow-lg: 0 10px 15px rgba(8,15,44,.08), 0 4px 6px rgba(8,15,44,.05);
+
+      /* --- Token MENU-SPECIFICI (estensione) ----------------------------- */
+
+      /* Separator standard del menu */
+      --menu-separator: rgba(70,1,18,.18);  /* border-surface-dark/18 */
+      --menu-separator-strong: rgba(70,1,18,.35);
+
+      /* Thumbnail */
+      --thumb-size: 5rem;       /* 80px */
+      --thumb-size-md: 4.5rem;  /* 72px */
+
+      /* Category Nav */
+      --nav-height: 3rem;       /* 48px */
+      --nav-bg: rgba(255,237,215,.96); /* bg-background/96 con blur */
+
+      /* Featured card */
+      --featured-bg: rgba(8,15,44,.04);  /* bg-text-main/4 */
+      --featured-border: rgba(248,182,36,.55); /* accent-gold/55 */
+    }
+
+    /* ===================================================================== */
+    /* Reset + Base                                                           */
+    /* ===================================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--color-background);
+      color: var(--color-text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    button { cursor: pointer; font-family: inherit; }
+    code {
+      font-family: ui-monospace, 'Fira Code', monospace;
+      font-size: 0.82em;
+      background: rgba(8,15,44,.09);
+      border-radius: var(--radius-sm);
+      padding: 0.1em 0.4em;
+    }
+    pre {
+      background: rgba(8,15,44,.06);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    pre code { background: none; padding: 0; font-size: 0.83em; }
+
+    /* ===================================================================== */
+    /* Container                                                              */
+    /* ===================================================================== */
+    .container {
+      margin-inline: auto;
+      width: 100%;
+      max-width: 56rem;
+      padding-inline: 1rem;
+    }
+    @media (min-width: 640px)  { .container { padding-inline: 1.5rem; } }
+    @media (min-width: 1024px) { .container { padding-inline: 2rem; } }
+
+    /* ===================================================================== */
+    /* Design System — Struttura documento                                    */
+    /* ===================================================================== */
+    .ds-page-header {
+      background: var(--color-text-main);
+      color: var(--color-text-light);
+      padding: 3rem 0 2.5rem;
+    }
+    .ds-page-header h1 {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+    .ds-page-header p {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      opacity: 0.65;
+      font-weight: 300;
+    }
+    .ds-breadcrumb {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 0.75rem;
+    }
+    .ds-toc {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 2rem;
+      margin: 2rem 0 3rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .ds-toc h2 {
+      font-family: var(--font-serif);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 0.75rem;
+    }
+    .ds-toc ol { padding-left: 1.25rem; }
+    .ds-toc li { margin: 0.25rem 0; }
+    .ds-toc a {
+      color: var(--color-text-main);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .ds-toc a:hover { color: var(--color-surface-dark); text-decoration: underline; }
+
+    /* Section wrapper nel documento */
+    .ds-section {
+      padding: 4rem 0;
+      border-top: 1px solid rgba(8,15,44,.10);
+    }
+    .ds-section:first-of-type { border-top: none; }
+
+    .ds-section-title {
+      font-family: var(--font-serif);
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--color-text-main);
+      margin-bottom: 0.5rem;
+    }
+    .ds-section-subtitle {
+      font-size: 0.9rem;
+      color: var(--color-text-muted);
+      margin-bottom: 2.5rem;
+      max-width: 42rem;
+    }
+    .ds-subsection {
+      margin-top: 2.5rem;
+    }
+    .ds-subsection-title {
+      font-family: var(--font-sans);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(8,15,44,.08);
+    }
+
+    /* Specimen wrapper */
+    .specimen {
+      background: var(--color-background);
+      border: 1px solid rgba(8,15,44,.08);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .specimen--dark {
+      background: var(--color-text-main);
+    }
+    .specimen--padded {
+      padding: 2rem;
+    }
+    .specimen--phone {
+      max-width: 390px;
+      margin-inline: auto;
+    }
+
+    /* Annotation inline */
+    .ds-annotation {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .ds-annotation--warning { color: #b45309; }
+    .ds-annotation--success { color: #15803d; }
+    .ds-annotation--error   { color: var(--color-surface-dark); }
+
+    /* Classi Tailwind v4 block */
+    .ds-classes {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      margin-top: 0.5rem;
+    }
+    .ds-classes strong {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: rgba(8,15,44,.4);
+      margin-bottom: 0.2rem;
+    }
+
+    /* Grid per specimen multipli */
+    .specimen-grid {
+      display: grid;
+      gap: 1rem;
+    }
+    .specimen-grid--2 { grid-template-columns: 1fr 1fr; }
+    .specimen-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 640px) {
+      .specimen-grid--2,
+      .specimen-grid--3 { grid-template-columns: 1fr; }
+    }
+
+    /* Token table */
+    .ds-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .ds-table th {
+      text-align: left;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      padding: 0.5rem 1rem 0.5rem 0;
+      border-bottom: 1px solid rgba(8,15,44,.12);
+    }
+    .ds-table td {
+      padding: 0.625rem 1rem 0.625rem 0;
+      border-bottom: 1px solid rgba(8,15,44,.06);
+      vertical-align: top;
+    }
+    .ds-table tr:last-child td { border-bottom: none; }
+    .ds-table code { font-size: 0.8em; }
+
+    /* ===================================================================== */
+    /*  1. TYPOGRAPHY — Scale prezzi (t-price, t-price-mid, t-price-alt)     */
+    /* ===================================================================== */
+
+    /* t-price: prezzo principale */
+    .t-price {
+      font-family: var(--font-sans);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--color-text-main);
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+    /* t-price-mid: prezzo secondario (es. al calice) */
+    .t-price-mid {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--color-text-main);
+      line-height: 1.2;
+    }
+    /* t-price-alt: etichetta/nota prezzo */
+    .t-price-alt {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      line-height: 1.3;
+    }
+
+    /* ===================================================================== */
+    /*  2. DISH ROW                                                           */
+    /* ===================================================================== */
+
+    /* --- Base (solo testo) ----------------------------------------------- */
+    /* Struttura osservata sul sito live:
+       - wrapper: pl-2 py-2 (lieve rientro, padding vertiale compatto)
+       - header: flex items-start justify-between gap-3
+       - titolo h3: 16px/500 bordeaux (text-surface-dark) — NON serif, NON text-text-main
+       - descrizione p: 12px/300 text-muted (rgba(8,15,44,.55))
+       - badge row: mt-4 mb-3 flex flex-wrap gap-2
+       - NESSUN separatore individuale tra piatti dello stesso combo;
+         il bordo è solo a livello di combo-block o menu-section
+    */
+    .dish-row {
+      border-bottom: 1px solid var(--menu-separator);
+      padding-block: 1.25rem;
+      transition: background-color 0.12s;
+    }
+    .dish-row:last-child { border-bottom: none; }
+    .dish-row__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .dish-row__title {
+      /* Osservato: font-sans (NON serif), 16px, weight-500, text-surface-dark (#460112) */
+      font-family: var(--font-sans);
+      font-size: 1rem;          /* 16px */
+      font-weight: 500;         /* medium */
+      color: var(--color-surface-dark); /* bordeaux #460112 — non text-text-main */
+      line-height: 1.35;
+      flex: 1 1 0%;
+    }
+    .dish-row__description {
+      /* Osservato: 12px, weight-300, colore rgba(8,15,44,.55) = text-muted */
+      font-size: 0.75rem;       /* 12px */
+      font-weight: 300;
+      color: var(--color-text-muted);
+      margin-top: 0.25rem;
+      line-height: 1.5;
+    }
+    .dish-row__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;              /* gap-2 = 8px — osservato */
+      margin-top: 1rem;         /* mt-4 — osservato */
+      margin-bottom: 0.75rem;   /* mb-3 — osservato */
+    }
+    .dish-row__price-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.125rem;
+      flex-shrink: 0;
+    }
+
+    /* --- Variante con thumbnail ------------------------------------------ */
+    .dish-row--photo .dish-row__inner {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .dish-row__thumb {
+      width: var(--thumb-size);
+      height: var(--thumb-size);
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      flex-shrink: 0;
+      background: rgba(8,15,44,.06); /* placeholder */
+      overflow: hidden;
+    }
+    .dish-row__thumb-placeholder {
+      width: var(--thumb-size);
+      height: var(--thumb-size);
+      border-radius: var(--radius-md);
+      flex-shrink: 0;
+      background: rgba(8,15,44,.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(8,15,44,.2);
+      font-size: 1.5rem;
+    }
+    .dish-row__body { flex: 1 1 0%; min-width: 0; }
+
+    /* --- Variante compatta (mobile) --------------------------------------- */
+    .dish-row--compact {
+      padding-block: 0.875rem;
+    }
+    .dish-row--compact .dish-row__title {
+      font-size: 0.9375rem; /* 15px */
+    }
+    .dish-row--compact .dish-row__description {
+      font-size: 0.75rem;
+      margin-top: 0.2rem;
+    }
+    .dish-row--compact .dish-row__badges {
+      margin-top: 0.625rem;
+      gap: 0.25rem;
+    }
+
+    /* --- Stato: esaurito ------------------------------------------------- */
+    .dish-row--esaurito {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .dish-row--esaurito .dish-row__title {
+      text-decoration: line-through;
+      text-decoration-color: rgba(70,1,18,.4);
+    }
+
+    /* --- Stato: hover ----------------------------------------------------- */
+    .dish-row--hoverable:hover {
+      background-color: rgba(8,15,44,.025);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ===================================================================== */
+    /*  3. DISH CARD                                                          */
+    /* ===================================================================== */
+
+    .dish-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow 0.18s, transform 0.18s;
+    }
+    .dish-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+    .dish-card__body {
+      padding: 1.125rem 1.25rem 1.25rem;
+    }
+    .dish-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    .dish-card__title {
+      font-family: var(--font-serif);
+      font-size: 1.0625rem;
+      font-weight: 400;
+      color: var(--color-text-main);
+      line-height: 1.35;
+    }
+    .dish-card__description {
+      font-size: 0.84rem;
+      color: var(--color-text-muted);
+      margin-top: 0.5rem;
+      line-height: 1.55;
+    }
+    .dish-card__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.75rem;
+    }
+    .dish-card__image {
+      width: 100%;
+      height: 10rem;
+      object-fit: cover;
+      background: rgba(8,15,44,.06);
+    }
+    .dish-card__image-placeholder {
+      width: 100%;
+      height: 10rem;
+      background: rgba(8,15,44,.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(8,15,44,.18);
+      font-size: 2.5rem;
+    }
+
+    /* --- Featured --------------------------------------------------------- */
+    .dish-card--featured {
+      background: var(--featured-bg);
+      border: 1.5px solid var(--featured-border);
+      box-shadow: 0 0 0 0 transparent, var(--shadow-sm);
+    }
+    .dish-card--featured .dish-card__title {
+      color: var(--color-surface-dark);
+    }
+    .dish-card--featured-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-accent-gold);
+      margin-bottom: 0.5rem;
+    }
+    .dish-card--featured-badge::before {
+      content: '★';
+      font-size: 0.7rem;
+    }
+
+    /* --- Esaurito --------------------------------------------------------- */
+    .dish-card--esaurito {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .dish-card--esaurito .dish-card__title {
+      text-decoration: line-through;
+      text-decoration-color: rgba(8,15,44,.4);
+    }
+    .dish-card--esaurito .dish-card__image,
+    .dish-card--esaurito .dish-card__image-placeholder {
+      filter: grayscale(1);
+    }
+
+    /* Esaurito overlay badge */
+    .dish-card__esaurito-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-light);
+      background: rgba(8,15,44,.55);
+      border-radius: var(--radius-full);
+    }
+
+    /* ===================================================================== */
+    /*  4. BADGE SYSTEM                                                       */
+    /* ===================================================================== */
+
+    /* Base badge — ereditato dal design system base */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.15rem 0.55rem;
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+
+    /* Varianti base ereditate */
+    .badge--default   { background: var(--color-text-main);    color: var(--color-text-light); }
+    .badge--highlight { background: var(--color-accent-orange); color: var(--color-text-light); }
+    .badge--gold      { background: var(--color-accent-gold);   color: var(--color-text-main); }
+    .badge--outline   { border: 1px solid rgba(8,15,44,.3);    color: var(--color-text-main); background: transparent; }
+    .badge--allergen  { border: 1px solid rgba(70,1,18,.35);   color: var(--color-surface-dark); background: transparent; }
+
+    /* --- Badge DIETA (menu-specific, estensione) ------------------------- */
+    /* Gluten Free */
+    .badge--gf {
+      background: rgba(21,97,109,.12);   /* azzurro/12 */
+      color: #15616d;                     /* --color-azzurro */
+      border: 1px solid rgba(21,97,109,.25);
+      font-weight: 600;
+    }
+    /* Vegan */
+    .badge--vegan {
+      background: rgba(21,128,61,.12);
+      color: #15803d;
+      border: 1px solid rgba(21,128,61,.25);
+      font-weight: 600;
+    }
+    /* Senza uova */
+    .badge--no-egg {
+      background: rgba(180,83,9,.10);
+      color: #b45309;
+      border: 1px solid rgba(180,83,9,.22);
+      font-weight: 500;
+    }
+    /* Senza latticini */
+    .badge--no-dairy {
+      background: rgba(100,116,139,.10);
+      color: #475569;
+      border: 1px solid rgba(100,116,139,.22);
+      font-weight: 500;
+    }
+    /* Piccante */
+    .badge--spicy {
+      background: rgba(239,88,8,.14);
+      color: var(--color-accent-orange);
+      border: 1px solid rgba(239,88,8,.25);
+      font-weight: 600;
+    }
+    /* --- Badge ALLERGENI (categorici) ------------------------------------ */
+    .badge--allergen-glutine  { border-color: rgba(180,83,9,.4);   color: #b45309; background: rgba(180,83,9,.06); }
+    .badge--allergen-crostacei{ border-color: rgba(239,68,68,.4);  color: #dc2626; background: rgba(239,68,68,.06); }
+    .badge--allergen-uova     { border-color: rgba(202,138,4,.4);  color: #ca8a04; background: rgba(202,138,4,.06); }
+    .badge--allergen-pesce    { border-color: rgba(59,130,246,.4); color: #2563eb; background: rgba(59,130,246,.06); }
+    .badge--allergen-arachidi { border-color: rgba(124,58,237,.4); color: #7c3aed; background: rgba(124,58,237,.06); }
+    .badge--allergen-soia     { border-color: rgba(16,185,129,.4); color: #059669; background: rgba(16,185,129,.06); }
+    .badge--allergen-latticini{ border-color: rgba(100,116,139,.4);color: #475569; background: rgba(100,116,139,.06); }
+    .badge--allergen-sedano   { border-color: rgba(21,128,61,.4);  color: #15803d; background: rgba(21,128,61,.06); }
+    .badge--allergen-senape   { border-color: rgba(234,179,8,.4);  color: #a16207; background: rgba(234,179,8,.06); }
+    .badge--allergen-sesamo   { border-color: rgba(132,204,22,.4); color: #4d7c0f; background: rgba(132,204,22,.06); }
+    .badge--allergen-lupini   { border-color: rgba(251,146,60,.4); color: #ea580c; background: rgba(251,146,60,.06); }
+    .badge--allergen-molluschi{ border-color: rgba(168,85,247,.4); color: #9333ea; background: rgba(168,85,247,.06); }
+    .badge--allergen-anidride { border-color: rgba(244,114,182,.4);color: #db2777; background: rgba(244,114,182,.06); }
+    .badge--allergen-noci     { border-color: rgba(120,53,15,.4);  color: #78350f; background: rgba(120,53,15,.06); }
+
+    /* Badge icon prefix */
+    .badge__icon { margin-right: 0.25rem; font-size: 0.85em; }
+
+    /* ===================================================================== */
+    /*  5. PRICE BLOCK                                                        */
+    /* ===================================================================== */
+
+    .price-block {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.1rem;
+    }
+    .price-block--start { align-items: flex-start; }
+
+    /* Prezzo con etichetta sopra */
+    .price-block__label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      line-height: 1;
+    }
+
+    /* Prezzo barrato (sconto/vecchio) */
+    .price-block__original {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      text-decoration: line-through;
+      line-height: 1.2;
+    }
+
+    /* Range prezzo */
+    .price-block__range {
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+      line-height: 1.2;
+    }
+
+    /* Prezzo a partire da */
+    .price-block__from {
+      font-size: 0.65rem;
+      color: var(--color-text-muted);
+      line-height: 1;
+      font-style: italic;
+    }
+
+    /* ===================================================================== */
+    /*  6. MENU SECTION                                                       */
+    /* ===================================================================== */
+
+    .menu-section { }
+    .menu-section + .menu-section {
+      margin-top: 3rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid var(--menu-separator);
+    }
+
+    /* Intestazione categoria */
+    .menu-section__header {
+      margin-bottom: 1.5rem;
+    }
+    .menu-section__category-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      margin-bottom: 0.4rem;
+    }
+    .menu-section__title {
+      font-family: var(--font-serif);
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--color-surface-dark);
+      line-height: 1.2;
+    }
+    .menu-section__description {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      margin-top: 0.4rem;
+      line-height: 1.55;
+      font-style: italic;
+      max-width: 38rem;
+    }
+
+    /* Sottotitolo gruppo (sticky su scroll) */
+    .menu-group__title {
+      font-family: var(--font-sans);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      padding-block: 0.625rem;
+      border-bottom: 1px solid var(--menu-separator);
+      margin-bottom: 0;
+      /* Sticky */
+      position: sticky;
+      top: var(--nav-height);
+      background-color: var(--color-background);
+      z-index: 5;
+    }
+
+    /* Lista piatti */
+    .menu-section__list { }
+
+    /* Stato vuoto */
+    .menu-section__empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1rem;
+      text-align: center;
+      gap: 0.5rem;
+    }
+    .menu-section__empty-icon {
+      font-size: 2rem;
+      opacity: 0.3;
+      margin-bottom: 0.25rem;
+    }
+    .menu-section__empty-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-muted);
+    }
+    .menu-section__empty-sub {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      opacity: 0.7;
+    }
+
+    /* ===================================================================== */
+    /*  7. CATEGORY NAV                                                       */
+    /* ===================================================================== */
+
+    .category-nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: var(--nav-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--menu-separator);
+      height: var(--nav-height);
+      overflow: hidden;
+    }
+    .category-nav__scroll {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding-inline: 1rem;
+      height: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: none;
+    }
+    .category-nav__scroll::-webkit-scrollbar { display: none; }
+
+    /* Pill base */
+    .category-pill {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      padding: 0.3rem 0.875rem;
+      border-radius: var(--radius-full);
+      font-size: 0.83rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      transition: background-color 0.14s, border-color 0.14s, color 0.14s;
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    /* Default */
+    .category-pill--default {
+      color: var(--color-text-muted);
+      border-color: rgba(8,15,44,.12);
+      background: transparent;
+    }
+    .category-pill--default:hover {
+      color: var(--color-text-main);
+      border-color: rgba(8,15,44,.25);
+      background: rgba(8,15,44,.04);
+    }
+
+    /* Attivo */
+    .category-pill--active {
+      background: var(--color-text-main);
+      color: var(--color-text-light);
+      border-color: var(--color-text-main);
+      font-weight: 600;
+    }
+
+    /* Tab style (alternativa flat) */
+    .category-tab {
+      display: inline-flex;
+      align-items: center;
+      white-space: nowrap;
+      padding: 0 1rem;
+      height: 100%;
+      font-size: 0.83rem;
+      font-weight: 500;
+      color: var(--color-text-muted);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .category-tab:hover {
+      color: var(--color-text-main);
+    }
+    .category-tab--active {
+      color: var(--color-surface-dark);
+      border-bottom-color: var(--color-surface-dark);
+      font-weight: 600;
+    }
+
+    /* ===================================================================== */
+    /*  8. MENU PAGE LAYOUT                                                   */
+    /* ===================================================================== */
+
+    .menu-page { min-height: 100vh; }
+
+    /* -----------------------------------------------------------------------
+       Header — struttura osservata sul sito live:
+       - flex-col items-center justify-center
+       - logo (img/svg) centrato sopra, poi titolo h1
+       - py-4 (16px) — compatto rispetto al design precedente
+       - border-b bordeaux/30 (più marcato della separazione tra righe)
+       Nota colori DS: sfondo bg-background (panna #ffedd7), titolo text-surface-dark
+    ----------------------------------------------------------------------- */
+    .menu-header {
+      background: var(--color-background);
+      padding: 1rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--menu-separator-strong); /* rgba(70,1,18,.35) */
+    }
+    .menu-header__logo {
+      /* Logo SVG o img centrato — dimensioni osservate: ~104×40px area */
+      max-height: 2.5rem;   /* 40px */
+      width: auto;
+      margin-bottom: 0.5rem;
+    }
+    .menu-header__title {
+      /* Osservato: 24px/800 — nel DS usiamo font-serif weight-700 */
+      font-family: var(--font-serif);
+      font-size: 1.5rem;    /* 24px */
+      font-weight: 700;
+      color: var(--color-surface-dark); /* #460112 bordeaux */
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    /* -----------------------------------------------------------------------
+       FOOTER — due varianti
+       Regola DS: bg NEUTRO, NON bg-text-main (blu notte).
+       Sfondo: --color-background (#ffedd7 panna) oppure rgba(70,1,18,.04)
+       per una leggera separazione visiva senza usare colori scuri.
+
+       Variante A: FooterSimple  — solo copyright, Home Index
+       Variante B: FooterFull    — Servizi + Avviso Allergeni + copyright, Category Page
+    ----------------------------------------------------------------------- */
+
+    /* -----------------------------------------------------------------------
+       FOOTER BASE — barra copyright comune a entrambe le varianti
+    ----------------------------------------------------------------------- */
+    .footer-copyright {
+      border-top: 1px solid var(--menu-separator);   /* rgba(70,1,18,.18) */
+      padding: 1.25rem 1rem;
+      text-align: center;
+    }
+    .footer-copyright__text {
+      font-family: var(--font-sans);
+      font-size: 0.8125rem;   /* 13px */
+      font-weight: 400;
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    /* -----------------------------------------------------------------------
+       VARIANTE A — FooterSimple (Home Index /)
+       Layout: flex row, copyright a sinistra, theme-toggle a destra.
+       Aggiornato: aggiunto ThemeToggle button per light/dark mode switch.
+    ----------------------------------------------------------------------- */
+    .footer-simple {
+      background: var(--color-background); /* #ffedd7 panna */
+      border-top: 1px solid var(--menu-separator); /* rgba(70,1,18,.18) */
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    /* Theme toggle — pulsante circolare ☀️/🌙 */
+    .theme-toggle {
+      flex-shrink: 0;
+      width: 2.125rem;
+      height: 2.125rem;
+      border-radius: 50%;
+      border: none;
+      background: rgba(70,1,18,.08);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.18s ease;
+      padding: 0;
+    }
+    .theme-toggle:hover  { background: rgba(70,1,18,.15); transform: scale(1.08); }
+    .theme-toggle:active { transform: scale(0.94); }
+    .theme-toggle svg {
+      width: 1.05rem;
+      height: 1.05rem;
+      stroke: var(--color-surface-dark);
+      fill: none;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    /* Icona attiva: sole in light, luna in dark */
+    .icon-sun  { display: block; }
+    .icon-moon { display: none;  }
+    [data-theme="dark"] .icon-sun  { display: none;  }
+    [data-theme="dark"] .icon-moon { display: block; }
+
+    /* -----------------------------------------------------------------------
+       VARIANTE B — FooterFull (Category Page /[slug])
+       Sezione servizi + avviso allergeni sopra la barra copyright
+    ----------------------------------------------------------------------- */
+    .footer-full {
+      background: var(--color-background); /* #ffedd7 panna */
+      margin-top: 3rem;
+    }
+
+    /* Area contenuto (Servizi + Allergeni) */
+    .footer-full__body {
+      padding: 2rem 1rem 1.5rem;
+      /* Desktop: 2 colonne */
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem 3rem;
+      max-width: 56rem;
+      margin-inline: auto;
+    }
+    @media (max-width: 639px) {
+      .footer-full__body {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+      }
+    }
+
+    /* Titolo blocco (Servizi / Avviso Allergeni) */
+    .footer-block__title {
+      font-family: var(--font-sans);
+      font-size: 1rem;           /* 16px */
+      font-weight: 700;
+      color: var(--color-surface-dark);  /* bordeaux */
+      margin-bottom: 1.25rem;
+    }
+
+    /* ---- Blocco Servizi ---- */
+    .service-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--menu-separator); /* rgba(70,1,18,.18) */
+    }
+    .service-row:last-child { border-bottom: none; }
+    .service-row__name {
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;      /* 15px */
+      font-weight: 400;
+      color: var(--color-surface-dark);
+      flex: 1;
+    }
+    .service-row__price {
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;      /* 15px */
+      font-weight: 600;
+      color: var(--color-surface-dark);
+      white-space: nowrap;
+    }
+
+    /* ---- Blocco Avviso Allergeni ---- */
+    /* Box arancione — usa accent-orange del DS come sfondo, testo bianco (text-light/panna) */
+    .allergen-warning-box {
+      background: var(--color-accent-orange);  /* #ef5808 */
+      border: 1.5px solid rgba(239,88,8,.7);   /* bordo leggermente più scuro */
+      border-radius: var(--radius-lg);          /* 8px */
+      padding: 1.125rem 1.25rem;
+      color: var(--color-text-light);           /* #ffedd7 panna — NON bianco puro */
+    }
+    .allergen-warning-box p {
+      font-family: var(--font-sans);
+      font-size: 0.875rem;       /* 14px */
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--color-text-light);
+    }
+    .allergen-warning-box p + p {
+      margin-top: 0.75rem;
+    }
+
+    /* Contenuto principale — osservato: px-4, niente padding-top esplicito */
+    .menu-main {
+      padding-inline: 1rem; /* px-4 */
+      padding-bottom: 4rem;
+      /* max-width centrato su desktop: md:w-[48rem] lg:w-[56rem] md:mx-auto */
+      max-width: 56rem;
+      margin-inline: auto;
+    }
+
+    /* -----------------------------------------------------------------------
+       Back button — osservato: in <nav> con py-4, testo "< Indietro"
+       - font 16px, weight 200 (extralight) sul sito live → DS: weight-300 light
+       - colore text-surface-dark, hover opacity-70
+    ----------------------------------------------------------------------- */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 1rem;      /* 16px — osservato */
+      font-weight: 300;     /* light — approssimazione DS del 200 live */
+      color: var(--color-surface-dark);
+      text-decoration: none;
+      padding: 1rem 0;      /* py-4 — osservato */
+      transition: opacity 0.12s;
+    }
+    .back-btn:hover { opacity: 0.7; }
+    .back-btn__arrow { font-size: 1rem; line-height: 1; }
+
+    /* -----------------------------------------------------------------------
+       Home Index — SectionCard con icona
+       Layout: lista verticale, ogni riga ~49px, icona SVG 26px (1.625rem),
+       label a destra dell'icona, chevron SVG all'estrema destra.
+       Separatore border-b bordeaux/18 tra le righe.
+
+       NOTA SVG: le icone usano SVG inline con colori hardcoded (#460112).
+       In dark mode vengono recolorati via CSS filter (vedere sezione Dark Mode).
+       Non usare stroke/fill via CSS puro — gli attributi inline hanno precedenza.
+    ----------------------------------------------------------------------- */
+    .section-card {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;           /* 14px — leggermente più compatto del px-4 */
+      padding: 0.875rem 0;     /* py-3.5 senza padding orizzontale (gestito dal parent) */
+      border-bottom: 1px solid var(--menu-separator); /* rgba(70,1,18,.18) */
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.12s ease;
+    }
+    .section-card:last-child { border-bottom: none; }
+    .section-card:hover { background-color: rgba(70,1,18,.03); }
+
+    .section-card__icon {
+      width: 2rem;             /* 32px — area contenitore */
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .section-card__icon svg {
+      width: 1.625rem;         /* 26px — icona effettiva (aggiornato da 1.75rem) */
+      height: 1.625rem;
+      /* stroke/fill NON impostati qui — gli SVG inline hanno colori hardcoded.
+         La recolorazione dark mode avviene tramite CSS filter sul tag <svg>. */
+      stroke-width: 1.35;      /* leggermente più pesante del DS base (1.25) per leggibilità mobile */
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .section-card__label {
+      font-family: var(--font-sans);
+      font-size: 1rem;         /* 16px */
+      font-weight: 400;
+      color: var(--color-surface-dark);
+      flex: 1;
+      line-height: 1.35;
+    }
+    .section-card__chevron {
+      flex-shrink: 0;
+      opacity: 0.38;
+    }
+    /* Il chevron usa un <svg> inline, non un carattere testuale */
+    .section-card__chevron svg {
+      width: 0.875rem;
+      height: 0.875rem;
+      stroke: var(--color-surface-dark);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* -----------------------------------------------------------------------
+       Category Header — intestazione sezione con icona
+       Struttura osservata: grid grid-cols-12, icona in col-span-2,
+       titolo+desc in col-span-10. Border-b bordeaux/30.
+       Dimensioni osservate: titolo 24px/200, desc 14px/300
+       Nel DS: titolo font-sans text-2xl weight-300 (light), desc text-sm weight-300
+    ----------------------------------------------------------------------- */
+    .cat-section-header {
+      display: grid;
+      grid-template-columns: 3.5rem 1fr; /* icona ~56px + contenuto */
+      align-items: flex-start;
+      padding: 0.75rem 0 1rem;
+      border-bottom: 1px solid var(--menu-separator-strong); /* /35 */
+    }
+    .cat-section-header__icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      display: flex;
+      align-items: flex-start;
+      padding-top: 0.2rem;
+      flex-shrink: 0;
+    }
+    .cat-section-header__icon svg {
+      width: 2rem;
+      height: 2rem;
+      stroke: var(--color-surface-dark);
+      fill: none;
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .cat-section-header__title {
+      font-family: var(--font-sans);
+      font-size: 1.5rem;   /* 24px — osservato */
+      font-weight: 300;    /* light — DS approssima il weight-200 live */
+      color: var(--color-surface-dark);
+      line-height: 1.25;
+    }
+    .cat-section-header__desc {
+      font-size: 0.875rem; /* 14px — osservato */
+      font-weight: 300;
+      color: var(--color-surface-dark);
+      opacity: 0.7;
+      margin-top: 0.2rem;
+      line-height: 1.5;
+    }
+
+    /* ===================================================================== */
+    /*  9. MENU FISSO CARD                                                    */
+    /* ===================================================================== */
+
+    /* -----------------------------------------------------------------------
+       Struttura osservata sul sito live (business-lunch):
+       - Ogni "combo" è un article con py-6 pt-8 mb-8
+       - Header: riga flex justify-between → titolo a sinistra + prezzo a destra
+       - Titolo combo: 24px / weight-200 / colore ARANCIONE (text-accent-orange)
+       - Prezzo combo: 16px / weight-600 / quasi-nero
+       - Sotto header: lista piatti (DishRow senza separatore individuale)
+       - Poi: blocco allergeni border-t / blocco servizi border-t
+       - Separatore tra combo: border-t border-surface-dark/15
+    ----------------------------------------------------------------------- */
+    .menu-fisso-card {
+      border: 1.5px solid var(--featured-border);  /* accent-gold/55 */
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      background: rgba(248,182,36,.06);
+      margin-bottom: 1.5rem;
+    }
+    .menu-fisso-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .menu-fisso-card__title {
+      font-family: var(--font-serif);
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--color-surface-dark);
+    }
+    .menu-fisso-card__description {
+      font-size: 0.84rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+      line-height: 1.55;
+      margin-bottom: 0.875rem;
+    }
+    .menu-fisso-card__items {
+      list-style: none;
+      border-top: 1px solid rgba(248,182,36,.25);
+      padding-top: 0.75rem;
+    }
+    .menu-fisso-card__item {
+      font-size: 0.84rem;
+      color: var(--color-text-main);
+      padding: 0.25rem 0;
+      padding-left: 1rem;
+      position: relative;
+      line-height: 1.4;
+    }
+    .menu-fisso-card__item::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--color-accent-gold);
+      font-size: 0.75rem;
+    }
+    .menu-fisso-card__services {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.75rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Combo Block — layout alternativo osservato sul sito live
+       Usato per "Business lunch" e menu fisso con struttura più semplice:
+       niente card/bordo, ogni combo è separato da un bordo-t leggero.
+    ----------------------------------------------------------------------- */
+    .combo-block {
+      padding: 2rem 0 1.5rem;
+      border-top: 1px solid var(--menu-separator); /* /18 */
+    }
+    .combo-block:first-child {
+      border-top: none;
+      padding-top: 1rem;
+    }
+    /* Riga titolo + prezzo — flex justify-between */
+    .combo-block__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-bottom: 1rem;
+    }
+    /* Titolo combo — osservato: 24px/200/arancione */
+    .combo-block__title {
+      font-family: var(--font-sans);
+      font-size: 1.5rem;          /* 24px */
+      font-weight: 300;           /* DS: light ≈ 200 live */
+      color: var(--color-accent-orange); /* arancione — DIFFERENZA dal DS precedente */
+      line-height: 1.3;
+      flex: 1;
+    }
+    /* Prezzo combo — osservato: 16px/600/nero */
+    .combo-block__price {
+      font-family: var(--font-sans);
+      font-size: 1rem;            /* 16px */
+      font-weight: 600;
+      color: var(--color-text-main);
+      white-space: nowrap;
+      padding-top: 0.35rem;
+      flex-shrink: 0;
+    }
+    /* Descrizione combo opzionale */
+    .combo-block__desc {
+      font-size: 0.875rem;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      margin-top: -0.5rem;
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+    /* Blocco allergeni del combo */
+    .combo-block__allergens {
+      padding: 0.75rem 0 0.5rem;
+      border-top: 1px solid var(--menu-separator);
+    }
+    .combo-block__allergens-label {
+      font-size: 0.8125rem;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      margin-bottom: 0.5rem;
+    }
+    /* Blocco servizi inclusi */
+    .combo-block__services {
+      padding: 0.625rem 0 0.25rem;
+      border-top: 1px solid var(--menu-separator);
+    }
+    .combo-block__services-label {
+      font-size: 0.8125rem;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ===================================================================== */
+    /* Utility helpers (necessarie per la documentazione)                     */
+    /* ===================================================================== */
+    .flex          { display: flex; }
+    .flex-col      { flex-direction: column; }
+    .flex-wrap     { flex-wrap: wrap; }
+    .items-start   { align-items: flex-start; }
+    .items-center  { align-items: center; }
+    .items-baseline{ align-items: baseline; }
+    .justify-between { justify-content: space-between; }
+    .justify-center  { justify-content: center; }
+    .shrink-0      { flex-shrink: 0; }
+    .gap-1  { gap: 0.25rem; }
+    .gap-2  { gap: 0.5rem; }
+    .gap-3  { gap: 0.75rem; }
+    .gap-4  { gap: 1rem; }
+    .gap-6  { gap: 1.5rem; }
+    .grid   { display: grid; }
+    .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+    .grid-cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 600px) { .grid-cols-2, .grid-cols-3 { grid-template-columns: 1fr; } }
+    .w-full { width: 100%; }
+    .mt-1  { margin-top: 0.25rem; }
+    .mt-2  { margin-top: 0.5rem; }
+    .mt-3  { margin-top: 0.75rem; }
+    .mt-4  { margin-top: 1rem; }
+    .mt-6  { margin-top: 1.5rem; }
+    .mt-8  { margin-top: 2rem; }
+    .mb-2  { margin-bottom: 0.5rem; }
+    .mb-4  { margin-bottom: 1rem; }
+    .mb-6  { margin-bottom: 1.5rem; }
+    .mb-8  { margin-bottom: 2rem; }
+    .mb-10 { margin-bottom: 2.5rem; }
+    .mb-12 { margin-bottom: 3rem; }
+    .px-4  { padding-inline: 1rem; }
+    .py-4  { padding-block: 1rem; }
+    .p-4   { padding: 1rem; }
+    .p-5   { padding: 1.25rem; }
+    .p-6   { padding: 1.5rem; }
+    .text-center { text-align: center; }
+    .font-medium { font-weight: 500; }
+    .font-semibold { font-weight: 600; }
+    .italic { font-style: italic; }
+    .text-text-main    { color: var(--color-text-main); }
+    .text-text-muted   { color: var(--color-text-muted); }
+    .text-text-light   { color: var(--color-text-light); }
+    .text-surface-dark { color: var(--color-surface-dark); }
+    .text-accent-gold  { color: var(--color-accent-gold); }
+    .text-accent-orange{ color: var(--color-accent-orange); }
+    .bg-background  { background-color: var(--color-background); }
+    .bg-surface     { background-color: var(--color-surface); }
+    .bg-text-main   { background-color: var(--color-text-main); }
+    .rounded-md { border-radius: var(--radius-md); }
+    .rounded-lg { border-radius: var(--radius-lg); }
+    .opacity-55 { opacity: 0.55; }
+    .line-through { text-decoration: line-through; }
+    small { font-size: 0.82em; color: var(--color-text-muted); }
+  </style>
+</head>
+<body>
+
+<!-- =========================================================
+     PAGE HEADER
+     ========================================================= -->
+<div class="ds-page-header">
+  <div class="container">
+    <div class="ds-breadcrumb">Design System → Estensione Menu</div>
+    <h1>Menu Design System</h1>
+    <p>Componenti, stati e pattern specifici della pagina menu — Vietnamonamour · Milano</p>
+  </div>
+</div>
+
+<!-- =========================================================
+     TABLE OF CONTENTS
+     ========================================================= -->
+<div class="container">
+  <div class="ds-toc">
+    <h2>Indice</h2>
+    <ol>
+      <li><a href="#tokens">Token estesi — Prezzi & Menu</a></li>
+      <li><a href="#price-block">PriceBlock — Pattern di prezzo</a></li>
+      <li><a href="#badge">Badge System — Allergeni & Dieta</a></li>
+      <li><a href="#dish-row">DishRow — Varianti riga piatto</a></li>
+      <li><a href="#dish-card">DishCard — Card piatto</a></li>
+      <li><a href="#menu-section">MenuSection — Intestazione categoria</a></li>
+      <li><a href="#category-nav">CategoryNav — Navigazione sticky</a></li>
+      <li><a href="#menu-fisso">MenuFissoCard &amp; ComboBlock</a></li>
+      <li><a href="#layout">MenuPage Layout — Struttura generale</a></li>
+      <li><a href="#footer">Footer — FooterSimple &amp; FooterFull</a></li>
+      <li><a href="#dark-mode">Dark Mode — Token &amp; Implementazione</a></li>
+    </ol>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- =========================================================
+       0. TOKEN ESTESI
+       ========================================================= -->
+  <section class="ds-section" id="tokens">
+    <h2 class="ds-section-title">Token estesi — Menu-specific</h2>
+    <p class="ds-section-subtitle">Questi token estendono (senza ridefinire) i token base di <code>globals.css</code>. Vanno aggiunti al blocco <code>@theme</code> in <code>globals.css</code> o come variabili CSS nel componente.</p>
+
+    <table class="ds-table">
+      <thead>
+        <tr>
+          <th>CSS Var</th>
+          <th>Valore</th>
+          <th>Uso</th>
+          <th>Tailwind v4 equivalente</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>--menu-separator</code></td>
+          <td><code>rgba(70,1,18,.18)</code></td>
+          <td>Bordo inferiore di ogni DishRow</td>
+          <td><code>border-surface-dark/18</code></td>
+        </tr>
+        <tr>
+          <td><code>--menu-separator-strong</code></td>
+          <td><code>rgba(70,1,18,.35)</code></td>
+          <td>Separatore tra sezioni principali</td>
+          <td><code>border-surface-dark/35</code></td>
+        </tr>
+        <tr>
+          <td><code>--thumb-size</code></td>
+          <td><code>5rem (80px)</code></td>
+          <td>Thumbnail quadrata DishRow variante foto</td>
+          <td><code>w-20 h-20</code></td>
+        </tr>
+        <tr>
+          <td><code>--nav-height</code></td>
+          <td><code>3rem (48px)</code></td>
+          <td>Altezza CategoryNav; offset sticky sottotitoli</td>
+          <td><code>h-12</code></td>
+        </tr>
+        <tr>
+          <td><code>--featured-bg</code></td>
+          <td><code>rgba(8,15,44,.04)</code></td>
+          <td>Sfondo DishCard featured</td>
+          <td><code>bg-text-main/4</code></td>
+        </tr>
+        <tr>
+          <td><code>--featured-border</code></td>
+          <td><code>rgba(248,182,36,.55)</code></td>
+          <td>Bordo DishCard featured</td>
+          <td><code>border-accent-gold/55</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Scale tipografica prezzi (nuovi token)</div>
+      <table class="ds-table">
+        <thead>
+          <tr><th>Token</th><th>Size</th><th>Weight</th><th>Color</th><th>Uso</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>t-price</code></td>
+            <td>17px</td><td>600</td><td><code>text-text-main</code></td>
+            <td>Prezzo principale piatto</td>
+          </tr>
+          <tr>
+            <td><code>t-price-mid</code></td>
+            <td>15px</td><td>500</td><td><code>text-text-main</code></td>
+            <td>Prezzo al calice / alternativo</td>
+          </tr>
+          <tr>
+            <td><code>t-price-alt</code></td>
+            <td>12px</td><td>400</td><td><code>text-text-muted</code></td>
+            <td>Etichetta prezzo / nota</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="specimen" style="display:flex;gap:2rem;align-items:baseline;flex-wrap:wrap;">
+        <div>
+          <div class="ds-annotation">t-price</div>
+          <span class="t-price">€ 12,50</span>
+        </div>
+        <div>
+          <div class="ds-annotation">t-price-mid</div>
+          <span class="t-price-mid">€ 6,00</span>
+        </div>
+        <div>
+          <div class="ds-annotation">t-price-alt</div>
+          <span class="t-price-alt">al calice</span>
+        </div>
+      </div>
+      <div class="ds-classes">
+        <strong>Classi Tailwind v4</strong>
+        <code>text-[17px] font-semibold text-text-main</code> /
+        <code>text-[15px] font-medium text-text-main</code> /
+        <code>text-xs font-normal text-text-muted</code>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       1. PRICE BLOCK
+       ========================================================= -->
+  <section class="ds-section" id="price-block">
+    <h2 class="ds-section-title">PriceBlock</h2>
+    <p class="ds-section-subtitle">Tutti i pattern di prezzo possibili nel menu. Sempre allineati a destra nel layout header del piatto.</p>
+
+    <div class="specimen-grid specimen-grid--3">
+
+      <!-- Pattern 1: Singolo -->
+      <div>
+        <div class="ds-annotation">Prezzo singolo</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="t-price">€ 14,00</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>flex flex-col items-end</code><br>
+          <code>text-[17px] font-semibold</code>
+        </div>
+      </div>
+
+      <!-- Pattern 2: Principale + alternativo -->
+      <div>
+        <div class="ds-annotation">Principale + al calice</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="t-price">€ 22,00</span>
+            <span class="t-price-alt">bottiglia</span>
+            <span class="t-price-mid">€ 6,00</span>
+            <span class="t-price-alt">al calice</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>flex flex-col items-end gap-0.5</code>
+        </div>
+      </div>
+
+      <!-- Pattern 3: Da / range -->
+      <div>
+        <div class="ds-annotation">Range / "a partire da"</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="t-price-alt">da</span>
+            <span class="t-price">€ 8,00</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>flex flex-col items-end</code>
+        </div>
+      </div>
+
+      <!-- Pattern 4: Barrato + nuovo -->
+      <div>
+        <div class="ds-annotation">Prezzo ridotto / sconto</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="price-block__original">€ 18,00</span>
+            <span class="t-price" style="color:var(--color-surface-dark);">€ 14,00</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>line-through text-[13px] text-text-muted</code>
+        </div>
+      </div>
+
+      <!-- Pattern 5: Menu fisso (prezzo grande + incluso) -->
+      <div>
+        <div class="ds-annotation">Menu fisso</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="t-price-alt">menù completo</span>
+            <span style="font-family:var(--font-serif);font-size:1.375rem;font-weight:400;color:var(--color-surface-dark);line-height:1.1;">€ 28,00</span>
+            <span class="t-price-alt">a persona</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>font-serif text-[22px] font-normal text-surface-dark</code>
+        </div>
+      </div>
+
+      <!-- Pattern 6: Prezzo non disponibile -->
+      <div>
+        <div class="ds-annotation">Prezzo su richiesta</div>
+        <div class="specimen" style="display:flex;justify-content:flex-end;">
+          <div class="price-block">
+            <span class="t-price-alt">su richiesta</span>
+          </div>
+        </div>
+        <div class="ds-classes">
+          <strong>Tailwind v4</strong>
+          <code>text-xs italic text-text-muted</code>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =========================================================
+       2. BADGE SYSTEM
+       ========================================================= -->
+  <section class="ds-section" id="badge">
+    <h2 class="ds-section-title">Badge System</h2>
+    <p class="ds-section-subtitle">Mapping completo per allergeni (14 EU) e preferenze dietetiche. I badge allergeni usano sempre <code>badge--allergen</code> come base + modificatore categorico.</p>
+
+    <!-- Badge dieta -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Badge dieta / preferenze</div>
+      <div class="specimen">
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+          <span class="badge badge--gf"><span class="badge__icon">🌾</span>Gluten Free</span>
+          <span class="badge badge--vegan"><span class="badge__icon">🌿</span>Vegan</span>
+          <span class="badge badge--highlight">Vegetariano</span>
+          <span class="badge badge--no-egg">Senza Uova</span>
+          <span class="badge badge--no-dairy">Senza Latticini</span>
+          <span class="badge badge--spicy"><span class="badge__icon">🌶</span>Piccante</span>
+          <span class="badge badge--gold">Chef's choice</span>
+          <span class="badge badge--outline">Biologico</span>
+        </div>
+      </div>
+      <table class="ds-table mt-4">
+        <thead><tr><th>Classe</th><th>Uso</th><th>Colore</th><th>Tailwind v4 (classi composte)</th></tr></thead>
+        <tbody>
+          <tr><td><code>.badge--gf</code></td><td>Gluten Free / <code>glutenFree: true</code></td><td style="color:#15616d">Azzurro</td><td><code>bg-[#15616d]/12 text-[#15616d] border border-[#15616d]/25 font-semibold</code></td></tr>
+          <tr><td><code>.badge--vegan</code></td><td>Vegan / <code>vegan: true</code></td><td style="color:#15803d">Verde</td><td><code>bg-green-700/12 text-green-700 border border-green-700/25 font-semibold</code></td></tr>
+          <tr><td><code>.badge--highlight</code></td><td>Vegetariano (base)</td><td style="color:#ef5808">Arancione</td><td><code>bg-accent-orange text-text-light</code></td></tr>
+          <tr><td><code>.badge--no-egg</code></td><td>Senza uova / <code>noUovo: true</code></td><td style="color:#b45309">Ambra</td><td><code>bg-amber-700/10 text-amber-700 border border-amber-700/22</code></td></tr>
+          <tr><td><code>.badge--no-dairy</code></td><td>Senza latticini / <code>noLatticini: true</code></td><td style="color:#475569">Grigio</td><td><code>bg-slate-500/10 text-slate-600 border border-slate-400/22</code></td></tr>
+          <tr><td><code>.badge--spicy</code></td><td>Piccante</td><td style="color:#ef5808">Arancione</td><td><code>bg-accent-orange/14 text-accent-orange border border-accent-orange/25 font-semibold</code></td></tr>
+          <tr><td><code>.badge--gold</code></td><td>Featured / Chef's choice</td><td style="color:#b08a00">Oro</td><td><code>bg-accent-gold text-text-main</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Badge allergeni -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Badge allergeni — 14 categorie EU</div>
+      <div class="specimen">
+        <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+          <span class="badge badge--allergen badge--allergen-glutine">Glutine</span>
+          <span class="badge badge--allergen badge--allergen-crostacei">Crostacei</span>
+          <span class="badge badge--allergen badge--allergen-uova">Uova</span>
+          <span class="badge badge--allergen badge--allergen-pesce">Pesce</span>
+          <span class="badge badge--allergen badge--allergen-arachidi">Arachidi</span>
+          <span class="badge badge--allergen badge--allergen-soia">Soia</span>
+          <span class="badge badge--allergen badge--allergen-latticini">Latte/Latticini</span>
+          <span class="badge badge--allergen badge--allergen-sedano">Sedano</span>
+          <span class="badge badge--allergen badge--allergen-senape">Senape</span>
+          <span class="badge badge--allergen badge--allergen-sesamo">Sesamo</span>
+          <span class="badge badge--allergen badge--allergen-lupini">Lupini</span>
+          <span class="badge badge--allergen badge--allergen-molluschi">Molluschi</span>
+          <span class="badge badge--allergen badge--allergen-anidride">Anidride solforosa</span>
+          <span class="badge badge--allergen badge--allergen-noci">Frutta a guscio</span>
+        </div>
+      </div>
+
+      <table class="ds-table mt-4">
+        <thead><tr><th>#</th><th>Classe modificatore</th><th>Allergene</th><th>Colore identificativo</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>.badge--allergen-glutine</code></td><td>Glutine (grano, segale, orzo…)</td><td style="color:#b45309">Ambra</td></tr>
+          <tr><td>2</td><td><code>.badge--allergen-crostacei</code></td><td>Crostacei</td><td style="color:#dc2626">Rosso</td></tr>
+          <tr><td>3</td><td><code>.badge--allergen-uova</code></td><td>Uova</td><td style="color:#ca8a04">Giallo</td></tr>
+          <tr><td>4</td><td><code>.badge--allergen-pesce</code></td><td>Pesce</td><td style="color:#2563eb">Blu</td></tr>
+          <tr><td>5</td><td><code>.badge--allergen-arachidi</code></td><td>Arachidi</td><td style="color:#7c3aed">Viola</td></tr>
+          <tr><td>6</td><td><code>.badge--allergen-soia</code></td><td>Soia</td><td style="color:#059669">Verde acqua</td></tr>
+          <tr><td>7</td><td><code>.badge--allergen-latticini</code></td><td>Latte / Latticini</td><td style="color:#475569">Grigio</td></tr>
+          <tr><td>8</td><td><code>.badge--allergen-sedano</code></td><td>Sedano</td><td style="color:#15803d">Verde</td></tr>
+          <tr><td>9</td><td><code>.badge--allergen-senape</code></td><td>Senape</td><td style="color:#a16207">Senape</td></tr>
+          <tr><td>10</td><td><code>.badge--allergen-sesamo</code></td><td>Sesamo</td><td style="color:#4d7c0f">Verde lime</td></tr>
+          <tr><td>11</td><td><code>.badge--allergen-lupini</code></td><td>Lupini</td><td style="color:#ea580c">Arancio</td></tr>
+          <tr><td>12</td><td><code>.badge--allergen-molluschi</code></td><td>Molluschi</td><td style="color:#9333ea">Viola</td></tr>
+          <tr><td>13</td><td><code>.badge--allergen-anidride</code></td><td>Anidride solforosa / Solfiti</td><td style="color:#db2777">Rosa</td></tr>
+          <tr><td>14</td><td><code>.badge--allergen-noci</code></td><td>Frutta a guscio (noci, mandorle…)</td><td style="color:#78350f">Marrone</td></tr>
+        </tbody>
+      </table>
+
+      <pre><code>/* Composizione in React/JSX */
+&lt;span className="badge badge--allergen badge--allergen-glutine"&gt;
+  Glutine
+&lt;/span&gt;
+
+/* Mapping da Payload (allergene.nome → classe CSS) */
+const allergenClass: Record&lt;string, string&gt; = {
+  'glutine':          'badge--allergen-glutine',
+  'crostacei':        'badge--allergen-crostacei',
+  'uova':             'badge--allergen-uova',
+  'pesce':            'badge--allergen-pesce',
+  // ... etc
+};</code></pre>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       3. DISH ROW
+       ========================================================= -->
+  <section class="ds-section" id="dish-row">
+    <h2 class="ds-section-title">DishRow</h2>
+    <p class="ds-section-subtitle">Layout a riga per ogni piatto. Struttura osservata sul sito live: <code>pl-2 py-2</code>, titolo <strong>font-sans</strong> medium bordeaux, descrizione 12px light muted, badge row con <code>gap-2 mt-4 mb-3</code>. Il separatore individuale <code>border-b</code> è presente solo nella variante à la carte — nei combo block il bordo è a livello di sezione.</p>
+
+    <!-- Variante 1: solo testo -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante 1 — Solo testo (default)</div>
+      <div class="ds-annotation">Specimen</div>
+      <div class="specimen">
+        <div class="dish-row dish-row--hoverable">
+          <div class="dish-row__header">
+            <h3 class="dish-row__title">Phở Bò Đặc Biệt</h3>
+            <div class="dish-row__price-group">
+              <span class="t-price">€ 14,00</span>
+            </div>
+          </div>
+          <p class="dish-row__description">Brodo di ossa di manzo con erbe aromatiche, fettine di manzo crudo, tendine e trippa. Servito con germoglietti, lime e basilico vietnamita.</p>
+          <div class="dish-row__badges">
+            <span class="badge badge--gf">Gluten Free</span>
+            <span class="badge badge--allergen badge--allergen-pesce">Pesce</span>
+            <span class="badge badge--allergen badge--allergen-sedano">Sedano</span>
+          </div>
+        </div>
+        <div class="dish-row dish-row--hoverable">
+          <div class="dish-row__header">
+            <h3 class="dish-row__title">Gỏi Cuốn</h3>
+            <div class="dish-row__price-group">
+              <span class="t-price">€ 8,50</span>
+            </div>
+          </div>
+          <p class="dish-row__description">Involtini freschi di riso con gamberi, maiale, vermicelli e erbe fresche. Salsa hoisin con arachidi tritate.</p>
+          <div class="dish-row__badges">
+            <span class="badge badge--allergen badge--allergen-glutine">Glutine</span>
+            <span class="badge badge--allergen badge--allergen-crostacei">Crostacei</span>
+            <span class="badge badge--allergen badge--allergen-arachidi">Arachidi</span>
+          </div>
+        </div>
+      </div>
+      <div class="ds-classes">
+        <strong>Classi Tailwind v4 — wrapper (à la carte, con separatore)</strong>
+        <code>border-b border-surface-dark/18 py-5</code><br>
+        <strong>Wrapper (in combo block, senza separatore)</strong>
+        <code>pl-2 py-2</code><br>
+        <strong>Header</strong>
+        <code>flex items-start justify-between gap-3</code><br>
+        <strong>Titolo h3 — font-sans, NON serif, colore bordeaux</strong>
+        <code>font-sans text-base font-medium text-surface-dark leading-snug flex-1</code><br>
+        <strong>Descrizione — 12px light muted</strong>
+        <code>text-xs font-light text-text-muted mt-1 leading-relaxed</code><br>
+        <strong>Badge row</strong>
+        <code>flex flex-wrap gap-2 mt-4 mb-3</code>
+      </div>
+    </div>
+
+    <!-- Variante 2: con thumbnail -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante 2 — Con foto thumbnail</div>
+      <div class="specimen">
+        <div class="dish-row dish-row--photo dish-row--hoverable">
+          <div class="dish-row__inner">
+            <div class="dish-row__thumb-placeholder">🍜</div>
+            <div class="dish-row__body">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Bún Bò Huế</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 13,50</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Zuppa piccante di vermicelli di riso con manzo, maiale e citronella. Specialty di Huế.</p>
+              <div class="dish-row__badges">
+                <span class="badge badge--spicy">🌶 Piccante</span>
+                <span class="badge badge--gf">Gluten Free</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ds-classes">
+        <strong>Classi Tailwind v4 — inner</strong>
+        <code>flex items-start gap-4</code><br>
+        <strong>Thumbnail</strong>
+        <code>w-20 h-20 rounded-md object-cover shrink-0</code>
+      </div>
+    </div>
+
+    <!-- Variante 3: compatta mobile -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante 3 — Compatta (mobile ≤375px)</div>
+      <div class="specimen specimen--phone">
+        <div class="dish-row dish-row--compact">
+          <div class="dish-row__header">
+            <h3 class="dish-row__title" style="font-size:0.9375rem;">Cơm Chiên Dương Châu</h3>
+            <div class="dish-row__price-group">
+              <span class="t-price-mid">€ 10,00</span>
+            </div>
+          </div>
+          <p class="dish-row__description" style="font-size:0.8rem;">Riso fritto alla cantonese con uova, verdure e gamberi.</p>
+          <div class="dish-row__badges" style="margin-top:0.4rem;">
+            <span class="badge badge--allergen badge--allergen-uova">Uova</span>
+            <span class="badge badge--allergen badge--allergen-crostacei">Crostacei</span>
+          </div>
+        </div>
+        <div class="dish-row dish-row--compact">
+          <div class="dish-row__header">
+            <h3 class="dish-row__title" style="font-size:0.9375rem;">Chả Giò Rán</h3>
+            <div class="dish-row__price-group">
+              <span class="t-price-mid">€ 7,50</span>
+            </div>
+          </div>
+          <p class="dish-row__description" style="font-size:0.8rem;">Involtini primavera fritti croccanti con maiale e vermicelli.</p>
+        </div>
+      </div>
+      <div class="ds-classes">
+        <strong>Classi Tailwind v4 — differenze vs default</strong>
+        <code>py-3.5</code> (vs <code>py-5</code>) ·
+        <code>text-[15px]</code> titolo (vs <code>text-[17px]</code>) ·
+        <code>text-[12.8px]</code> descrizione
+      </div>
+    </div>
+
+    <!-- Stati -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Stati</div>
+      <div class="specimen-grid specimen-grid--2">
+        <div>
+          <div class="ds-annotation ds-annotation--warning">Stato: Esaurito</div>
+          <div class="specimen">
+            <div class="dish-row dish-row--esaurito" style="padding-block:1.25rem;">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Tôm Hấp Bia</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 16,00</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Gamberi al vapore con birra e citronella.</p>
+              <div class="dish-row__badges">
+                <span class="dish-card__esaurito-badge">Esaurito</span>
+              </div>
+            </div>
+          </div>
+          <div class="ds-classes">
+            <strong>Tailwind v4</strong>
+            <code>opacity-55 pointer-events-none</code><br>
+            Titolo: <code>line-through decoration-text-main/40</code>
+          </div>
+        </div>
+        <div>
+          <div class="ds-annotation ds-annotation--success">Stato: Hover</div>
+          <div class="specimen">
+            <div class="dish-row" style="background:rgba(8,15,44,.025);border-radius:var(--radius-sm);padding-block:1.25rem;">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Bò Lúc Lắc</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 18,00</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Manzo saltato in padella wok con pepe nero e salsa di ostrica.</p>
+            </div>
+          </div>
+          <div class="ds-classes">
+            <strong>Tailwind v4</strong>
+            <code>hover:bg-text-main/[0.025] hover:rounded-sm</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       4. DISH CARD
+       ========================================================= -->
+  <section class="ds-section" id="dish-card">
+    <h2 class="ds-section-title">DishCard</h2>
+    <p class="ds-section-subtitle">Card con sfondo bianco e ombra. Usata per la Home Index (sezioni come card) e per piatti in layout a griglia. Polimorfica per tipo <code>_type</code>.</p>
+
+    <div class="specimen-grid specimen-grid--3">
+
+      <!-- Standard -->
+      <div>
+        <div class="ds-annotation">Standard</div>
+        <div class="dish-card">
+          <div class="dish-card__image-placeholder">🥗</div>
+          <div class="dish-card__body">
+            <div class="dish-card__header">
+              <h3 class="dish-card__title">Gỏi Đu Đủ</h3>
+              <div class="price-block">
+                <span class="t-price">€ 9,00</span>
+              </div>
+            </div>
+            <p class="dish-card__description">Insalata di papaya verde con gamberi secchi, carote e salsa nuoc cham.</p>
+            <div class="dish-card__badges">
+              <span class="badge badge--gf">Gluten Free</span>
+              <span class="badge badge--allergen badge--allergen-pesce">Pesce</span>
+              <span class="badge badge--allergen badge--allergen-crostacei">Crostacei</span>
+            </div>
+          </div>
+        </div>
+        <div class="ds-classes mt-2">
+          <strong>Tailwind v4</strong>
+          <code>bg-surface rounded-lg shadow-sm overflow-hidden hover:-translate-y-px hover:shadow-md transition-all</code>
+        </div>
+      </div>
+
+      <!-- Featured -->
+      <div>
+        <div class="ds-annotation ds-annotation--success">Featured</div>
+        <div class="dish-card dish-card--featured">
+          <div class="dish-card__body">
+            <div class="dish-card--featured-badge">Consigliato</div>
+            <div class="dish-card__header">
+              <h3 class="dish-card__title">Phở Bò Đặc Biệt</h3>
+              <div class="price-block">
+                <span class="t-price" style="color:var(--color-surface-dark);">€ 14,00</span>
+              </div>
+            </div>
+            <p class="dish-card__description">La nostra specialità: brodo limpido cotto 12 ore con ossa, cardamomo e anice stellato.</p>
+            <div class="dish-card__badges">
+              <span class="badge badge--gf">Gluten Free</span>
+              <span class="badge badge--allergen badge--allergen-pesce">Pesce</span>
+            </div>
+          </div>
+        </div>
+        <div class="ds-classes mt-2">
+          <strong>Tailwind v4</strong>
+          <code>bg-text-main/4 border border-accent-gold/55 rounded-lg</code>
+        </div>
+      </div>
+
+      <!-- Esaurito -->
+      <div>
+        <div class="ds-annotation ds-annotation--error">Esaurito</div>
+        <div class="dish-card dish-card--esaurito">
+          <div class="dish-card__image-placeholder" style="filter:grayscale(1);">🦞</div>
+          <div class="dish-card__body">
+            <div class="dish-card__header">
+              <h3 class="dish-card__title">Tôm Hùm Nướng</h3>
+              <div class="price-block">
+                <span class="t-price">€ 32,00</span>
+              </div>
+            </div>
+            <p class="dish-card__description">Aragosta alla griglia con burro alle erbe.</p>
+            <div class="dish-card__badges">
+              <span class="dish-card__esaurito-badge">Esaurito</span>
+            </div>
+          </div>
+        </div>
+        <div class="ds-classes mt-2">
+          <strong>Tailwind v4</strong>
+          <code>opacity-55 pointer-events-none</code><br>
+          Titolo: <code>line-through</code>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Regola: quando Card vs Row -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Quando usare Card vs Row</div>
+      <table class="ds-table">
+        <thead><tr><th>Pattern</th><th>Contesto</th><th>Componente</th></tr></thead>
+        <tbody>
+          <tr><td>Lista verticale di piatti</td><td>Pagina categoria <code>/menu/[slug]</code></td><td><code>DishRow</code> (default)</td></tr>
+          <tr><td>Griglia sezioni Home</td><td>Homepage <code>/</code></td><td><code>DishCard</code></td></tr>
+          <tr><td>Piatto in evidenza</td><td>Qualsiasi</td><td><code>DishCard--featured</code></td></tr>
+          <tr><td>Vino / Birra / Liquore</td><td>Pagina bevande</td><td><code>DishRow</code> (con info aggiuntive sotto)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       5. MENU SECTION
+       ========================================================= -->
+  <section class="ds-section" id="menu-section">
+    <h2 class="ds-section-title">MenuSection</h2>
+    <p class="ds-section-subtitle">Blocco che raggruppa una categoria (o sottocategoria) con intestazione e lista di piatti. Gestisce lo stato vuoto e i sottotitoli gruppo sticky.</p>
+
+    <!-- Specimen completa -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Struttura completa</div>
+      <div class="specimen">
+
+        <div class="menu-section">
+          <!-- Header categoria -->
+          <div class="menu-section__header">
+            <div class="menu-section__category-label">Antipasti</div>
+            <h2 class="menu-section__title">Khai Vị</h2>
+            <p class="menu-section__description">Piccoli assaggi vietnamiti per iniziare il pasto — freschi, bilanciati, aromatici.</p>
+          </div>
+
+          <!-- Sottotitolo gruppo (sticky) -->
+          <div class="menu-group__title">Involtini &amp; Fritti</div>
+
+          <!-- Lista piatti -->
+          <div class="menu-section__list">
+            <div class="dish-row dish-row--hoverable">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Gỏi Cuốn</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 8,50</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Involtini freschi con gamberi, maiale e vermicelli.</p>
+              <div class="dish-row__badges">
+                <span class="badge badge--allergen badge--allergen-crostacei">Crostacei</span>
+                <span class="badge badge--allergen badge--allergen-arachidi">Arachidi</span>
+              </div>
+            </div>
+            <div class="dish-row dish-row--hoverable">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Chả Giò Rán</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 7,50</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Involtini primavera fritti croccanti.</p>
+              <div class="dish-row__badges">
+                <span class="badge badge--allergen badge--allergen-glutine">Glutine</span>
+                <span class="badge badge--allergen badge--allergen-uova">Uova</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondo gruppo -->
+          <div class="menu-group__title">Insalate &amp; Freschi</div>
+          <div class="menu-section__list">
+            <div class="dish-row dish-row--hoverable">
+              <div class="dish-row__header">
+                <h3 class="dish-row__title">Gỏi Đu Đủ</h3>
+                <div class="dish-row__price-group">
+                  <span class="t-price">€ 9,00</span>
+                </div>
+              </div>
+              <p class="dish-row__description">Insalata di papaya verde con gamberi secchi.</p>
+              <div class="dish-row__badges">
+                <span class="badge badge--gf">Gluten Free</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="ds-classes mt-2">
+        <strong>Tailwind v4 — Intestazione</strong>
+        <code>mb-6</code> (menu-section__header)<br>
+        <strong>Category label</strong>
+        <code>text-[11px] font-bold tracking-[0.12em] uppercase text-text-muted mb-1.5</code><br>
+        <strong>Titolo sezione</strong>
+        <code>font-serif text-2xl font-normal text-surface-dark leading-tight</code><br>
+        <strong>Descrizione</strong>
+        <code>text-sm text-text-muted mt-1.5 leading-relaxed italic max-w-xl</code><br>
+        <strong>Group title (sticky)</strong>
+        <code>text-[11.5px] font-bold tracking-[0.1em] uppercase text-text-muted py-2.5 border-b border-surface-dark/18 sticky top-12 bg-background z-[5]</code>
+      </div>
+    </div>
+
+    <!-- Stato vuoto -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Stato vuoto — tutti i piatti esauriti o fuori orario</div>
+      <div class="specimen">
+        <div class="menu-section__header">
+          <div class="menu-section__category-label">Secondi</div>
+          <h2 class="menu-section__title">Món Chính</h2>
+        </div>
+        <div class="menu-section__empty">
+          <div class="menu-section__empty-icon">🍽</div>
+          <p class="menu-section__empty-title">Nessun piatto disponibile al momento</p>
+          <p class="menu-section__empty-sub">La sezione potrebbe essere fuori orario o i piatti sono esauriti.</p>
+        </div>
+      </div>
+      <div class="ds-classes">
+        <strong>Tailwind v4 — Empty state</strong>
+        <code>flex flex-col items-center justify-center py-12 px-4 text-center gap-2</code>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       6. CATEGORY NAV
+       ========================================================= -->
+  <section class="ds-section" id="category-nav">
+    <h2 class="ds-section-title">CategoryNav</h2>
+    <p class="ds-section-subtitle">Navigazione sticky tra sezioni. Due varianti: <strong>Pill</strong> (stile capsule, default mobile) e <strong>Tab</strong> (stile underline, desktop). Sempre sticky <code>top-0 z-20</code>.</p>
+
+    <!-- Pill nav -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante Pill (default / mobile)</div>
+      <div class="specimen" style="padding:0;border-radius:var(--radius-lg);overflow:hidden;">
+        <div class="category-nav" style="position:relative;">
+          <div class="category-nav__scroll">
+            <a href="#" class="category-pill category-pill--active">Antipasti</a>
+            <a href="#" class="category-pill category-pill--default">Zuppe</a>
+            <a href="#" class="category-pill category-pill--default">Secondi</a>
+            <a href="#" class="category-pill category-pill--default">Riso &amp; Noodle</a>
+            <a href="#" class="category-pill category-pill--default">Vini</a>
+            <a href="#" class="category-pill category-pill--default">Birre</a>
+            <a href="#" class="category-pill category-pill--default">Bevande</a>
+          </div>
+        </div>
+      </div>
+      <div class="ds-classes mt-3">
+        <strong>Nav wrapper</strong>
+        <code>sticky top-0 z-20 bg-background/96 backdrop-blur-sm border-b border-surface-dark/18 h-12 overflow-hidden</code><br>
+        <strong>Scroll container</strong>
+        <code>flex items-center gap-1 px-4 h-full overflow-x-auto scrollbar-none</code><br>
+        <strong>Pill default</strong>
+        <code>inline-flex items-center whitespace-nowrap px-3.5 py-1.5 rounded-full text-[13px] font-medium text-text-muted border border-text-main/12 hover:border-text-main/25 hover:text-text-main transition-colors shrink-0</code><br>
+        <strong>Pill active</strong>
+        <code>bg-text-main text-text-light border-text-main font-semibold</code>
+      </div>
+    </div>
+
+    <!-- Tab nav -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante Tab (desktop ≥768px)</div>
+      <div class="specimen" style="padding:0;border-radius:var(--radius-lg);overflow:hidden;">
+        <div class="category-nav" style="position:relative;border-bottom:none;">
+          <div class="category-nav__scroll" style="border-bottom:1px solid rgba(70,1,18,.18);">
+            <a href="#" class="category-tab category-tab--active">Antipasti</a>
+            <a href="#" class="category-tab">Zuppe</a>
+            <a href="#" class="category-tab">Secondi</a>
+            <a href="#" class="category-tab">Riso &amp; Noodle</a>
+            <a href="#" class="category-tab">Vini</a>
+            <a href="#" class="category-tab">Birre</a>
+          </div>
+        </div>
+      </div>
+      <div class="ds-classes mt-3">
+        <strong>Tab base</strong>
+        <code>inline-flex items-center whitespace-nowrap px-4 h-full text-[13px] font-medium text-text-muted border-b-2 border-transparent hover:text-text-main transition-colors shrink-0</code><br>
+        <strong>Tab active</strong>
+        <code>text-surface-dark border-b-2 border-surface-dark font-semibold</code>
+      </div>
+    </div>
+
+    <!-- Nota accessibility -->
+    <div class="specimen" style="background:rgba(248,182,36,.08);border:1px solid rgba(248,182,36,.3);">
+      <p style="font-size:0.82rem;color:var(--color-text-main);line-height:1.6;">
+        <strong>⚙️ Nota tecnica:</strong> <code>StickyNav</code> usa <code>IntersectionObserver</code> per evidenziare la sezione attiva durante lo scroll. L'offset per i sottotitoli gruppo (<code>top: var(--nav-height)</code> = <code>top-12</code>) deve essere sincronizzato con l'altezza della nav. La nav usa <code>backdrop-filter: blur</code> — verificare su Safari iOS.
+      </p>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       7. MENU FISSO CARD / COMBO BLOCK
+       ========================================================= -->
+  <section class="ds-section" id="menu-fisso">
+    <h2 class="ds-section-title">MenuFissoCard &amp; ComboBlock</h2>
+    <p class="ds-section-subtitle">Due pattern per menu a prezzo fisso. <strong>MenuFissoCard</strong> è la card con bordo gold per uso generale. <strong>ComboBlock</strong> è il pattern semplificato osservato sul sito live (business-lunch): niente card, ogni combo separato da un bordo leggero, titolo in <strong style="color:var(--color-accent-orange)">arancione</strong>.</p>
+
+    <!-- ComboBlock — pattern osservato live -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">ComboBlock — Layout osservato su menu.vietnamonamour.com/business-lunch</div>
+      <div class="specimen" style="padding:0;max-width:390px;margin-inline:auto;">
+
+        <!-- Header simulato -->
+        <div style="background:var(--color-background);padding:0.875rem 1rem;display:flex;flex-direction:column;align-items:center;border-bottom:1px solid var(--menu-separator-strong);">
+          <div style="font-family:var(--font-serif);font-size:1.25rem;font-weight:700;color:var(--color-surface-dark);">La Carta di Vietnamonamour</div>
+        </div>
+        <div style="padding:0.875rem 1rem 0.25rem;">
+          <a class="back-btn" style="padding:0 0 0.5rem;">&lt; Indietro</a>
+        </div>
+        <!-- Cat header -->
+        <div class="cat-section-header" style="margin:0 1rem;">
+          <div class="cat-section-header__icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 17 Q12 4 20 17"/><path d="M4 17H20"/>
+              <line x1="12" y1="17" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/>
+            </svg>
+          </div>
+          <div>
+            <p class="cat-section-header__title">Business lunch</p>
+            <p class="cat-section-header__desc">Menù pranzo da lunedì a venerdì. No festivi.</p>
+          </div>
+        </div>
+
+        <!-- Combo 1 -->
+        <div class="combo-block" style="padding-inline:1rem;">
+          <div class="combo-block__header">
+            <h2 class="combo-block__title">Pho + 2 Nem di carne</h2>
+            <span class="combo-block__price">16€</span>
+          </div>
+          <!-- Dish rows (no separator individuale) -->
+          <div class="dish-row" style="border-bottom:none;padding-block:0.625rem;">
+            <div class="dish-row__header">
+              <h3 class="dish-row__title">Nem di carne (Bis)</h3>
+            </div>
+            <p class="dish-row__description">Due involtini in sfoglia di riso croccante di carne di manzo/maiale, funghi asiatici noodles di soia ed erbe aromatiche.</p>
+            <div class="dish-row__badges">
+              <span class="badge badge--gf">Gluten Free</span>
+            </div>
+          </div>
+          <div class="dish-row" style="border-bottom:none;padding-block:0.625rem;">
+            <div class="dish-row__header">
+              <h3 class="dish-row__title">Pho zuppa di manzo e noodles riso</h3>
+            </div>
+            <p class="dish-row__description">Piatto nazionale, zuppa di manzo con noodles di riso ed erbe aromatiche.</p>
+            <div class="dish-row__badges">
+              <span class="badge badge--gf">Gluten Free</span>
+            </div>
+          </div>
+          <!-- Allergeni -->
+          <div class="combo-block__allergens">
+            <p class="combo-block__allergens-label">Allergeni presenti nel menù:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+              <span class="badge badge--allergen">Pesce</span>
+              <span class="badge badge--allergen badge--allergen-sedano">Sedano</span>
+              <span class="badge badge--allergen badge--allergen-soia">Soia</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Combo 2 -->
+        <div class="combo-block" style="padding-inline:1rem;">
+          <div class="combo-block__header">
+            <h2 class="combo-block__title">Pollo al curry con riso e Galetta</h2>
+            <span class="combo-block__price">16€</span>
+          </div>
+          <p class="combo-block__desc">Ciotola con latte di cocco e riso jasmine e galetta croccante di riso, tapioca e sesamo.</p>
+          <div class="dish-row" style="border-bottom:none;padding-block:0.625rem;">
+            <div class="dish-row__header">
+              <h3 class="dish-row__title">Coccio di pollo in terracotta</h3>
+            </div>
+            <p class="dish-row__description">Con bocconcini di pollo al curry e latte di cocco, lemongrass, erbe aromatiche.</p>
+            <div class="dish-row__badges">
+              <span class="badge badge--gf">Gluten Free</span>
+              <span class="badge badge--no-dairy">Senza Latticini</span>
+            </div>
+          </div>
+          <div class="combo-block__allergens">
+            <p class="combo-block__allergens-label">Allergeni presenti nel menù:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+              <span class="badge badge--allergen badge--allergen-sesamo">Sesamo</span>
+            </div>
+          </div>
+          <div class="combo-block__services">
+            <p class="combo-block__services-label">Servizi inclusi:</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
+              <span class="badge badge--outline">Coperto</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="ds-classes mt-2">
+        <strong>Combo block wrapper</strong>
+        <code>pt-8 pb-6 mb-8 border-t border-surface-dark/18 first:border-t-0 first:pt-4</code><br>
+        <strong>Header riga (titolo + prezzo)</strong>
+        <code>flex items-start justify-between gap-4 pb-4</code><br>
+        <strong>Titolo combo — ARANCIONE (osservato live)</strong>
+        <code>font-sans text-2xl font-light text-accent-orange leading-snug flex-1</code><br>
+        <strong>Prezzo combo</strong>
+        <code>font-sans text-base font-semibold text-text-main whitespace-nowrap pt-1.5 shrink-0</code><br>
+        <strong>Descrizione combo (opzionale)</strong>
+        <code>font-sans text-sm font-light text-text-muted -mt-2 mb-3 leading-relaxed</code><br>
+        <strong>Dish row (no separatore individuale)</strong>
+        <code>py-2.5</code> — <em>senza border-b</em><br>
+        <strong>Allergen/Services block</strong>
+        <code>pt-3 pb-2 border-t border-surface-dark/18</code>
+      </div>
+    </div>
+
+    <!-- MenuFissoCard — card completa per uso generale -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">MenuFissoCard — card con bordo gold (uso generale)</div>
+      <div class="specimen" style="max-width:480px;">
+        <div class="menu-fisso-card">
+          <div class="menu-fisso-card__header">
+            <h3 class="menu-fisso-card__title">Menù Pranzo</h3>
+            <div class="price-block">
+              <span class="t-price-alt">a persona</span>
+              <span style="font-family:var(--font-serif);font-size:1.375rem;color:var(--color-surface-dark);line-height:1.1;font-weight:400;">€ 18,00</span>
+            </div>
+          </div>
+          <p class="menu-fisso-card__description">Un pranzo veloce e autentico: primo, secondo, contorno e acqua inclusi. Disponibile solo a pranzo.</p>
+          <ul class="menu-fisso-card__items">
+            <li class="menu-fisso-card__item">Gỏi Cuốn — Involtini freschi</li>
+            <li class="menu-fisso-card__item">Phở Bò — Zuppa di manzo</li>
+            <li class="menu-fisso-card__item">Cơm Tấm — Riso spezzato con maiale</li>
+          </ul>
+          <div class="menu-fisso-card__services">
+            <span class="badge badge--outline">Acqua inclusa</span>
+            <span class="badge badge--outline">Coperto incluso</span>
+          </div>
+        </div>
+      </div>
+      <div class="ds-classes mt-2">
+        <strong>Tailwind v4 — wrapper</strong>
+        <code>border border-accent-gold/55 rounded-lg p-5 bg-accent-gold/6 mb-6</code><br>
+        <strong>Titolo</strong>
+        <code>font-serif text-lg font-bold text-surface-dark</code><br>
+        <strong>Item list</strong>
+        <code>text-sm text-text-main py-1 pl-4 relative before:content-['—'] before:absolute before:left-0 before:text-accent-gold</code>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       8. MENU PAGE LAYOUT
+       ========================================================= -->
+  <section class="ds-section" id="layout">
+    <h2 class="ds-section-title">MenuPage Layout</h2>
+    <p class="ds-section-subtitle">Struttura generale della pagina menu osservata sul sito live. Due template: <strong>Home Index</strong> (lista di sezioni con icone) e <strong>Category Page</strong> (lista combo/piatti con header sezione + back button). <strong>Non c'è CategoryNav pill</strong> nel sito live — ogni pagina è una sezione diretta.</p>
+
+    <div class="specimen-grid specimen-grid--2">
+
+      <!-- Home Index Layout -->
+      <div>
+        <div class="ds-annotation">Layout: Home Index <code>/</code></div>
+        <div class="specimen" style="padding:0;border-radius:var(--radius-lg);overflow:hidden;max-width:260px;margin-inline:auto;">
+          <!-- Header -->
+          <div style="background:var(--color-background);padding:0.75rem 1rem;border-bottom:1px solid var(--menu-separator-strong);display:flex;flex-direction:column;align-items:center;text-align:center;">
+            <div style="width:1.5rem;height:1.5rem;border:1px solid var(--color-surface-dark);border-radius:50%;margin-bottom:0.3rem;opacity:.5;"></div>
+            <div style="font-family:var(--font-serif);font-size:0.875rem;font-weight:700;color:var(--color-surface-dark);">La Carta di Vietnamonamour</div>
+          </div>
+          <!-- Section list -->
+          <div style="background:var(--color-background);">
+            <div style="display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--menu-separator);">
+              <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.3);border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:0.78rem;color:var(--color-surface-dark);flex:1;">I menù pranzo</span>
+              <span style="font-size:0.72rem;color:rgba(70,1,18,.4);">&gt;</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--menu-separator);">
+              <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.3);border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:0.78rem;color:var(--color-surface-dark);flex:1;">I menù degustazione</span>
+              <span style="font-size:0.72rem;color:rgba(70,1,18,.4);">&gt;</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--menu-separator);">
+              <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.3);border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:0.78rem;color:var(--color-surface-dark);flex:1;">Il menù alla carta</span>
+              <span style="font-size:0.72rem;color:rgba(70,1,18,.4);">&gt;</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.75rem;border-bottom:1px solid var(--menu-separator);">
+              <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.3);border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:0.78rem;color:var(--color-surface-dark);flex:1;">I nostri dolci</span>
+              <span style="font-size:0.72rem;color:rgba(70,1,18,.4);">&gt;</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.625rem;padding:0.5rem 0.75rem;">
+              <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.3);border-radius:2px;flex-shrink:0;"></div>
+              <span style="font-size:0.78rem;color:var(--color-surface-dark);flex:1;">Bevande</span>
+              <span style="font-size:0.72rem;color:rgba(70,1,18,.4);">&gt;</span>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div style="background:var(--color-background);border-top:1px solid var(--menu-separator);padding:0.5rem 0.75rem;text-align:center;">
+            <div style="font-size:0.62rem;color:var(--color-text-muted);">© 2026 Vietnamonamour</div>
+          </div>
+        </div>
+        <div class="ds-classes mt-2">
+          <strong>Struttura Next.js</strong>
+          <code>MenuHeader → &lt;main px-4&gt; → &lt;ul&gt; [SectionCard ×N] → FooterSimple</code><br>
+          <strong>SectionCard</strong>
+          <code>flex items-center gap-4 px-4 py-3 border-b border-surface-dark/18 hover:bg-surface-dark/[0.03]</code>
+        </div>
+      </div>
+
+      <!-- Category Page Layout -->
+      <div>
+        <div class="ds-annotation">Layout: Category Page <code>/[slug]</code></div>
+        <div class="specimen" style="padding:0;border-radius:var(--radius-lg);overflow:hidden;max-width:260px;margin-inline:auto;">
+          <!-- Header -->
+          <div style="background:var(--color-background);padding:0.625rem 0.75rem;border-bottom:1px solid var(--menu-separator-strong);text-align:center;">
+            <div style="font-family:var(--font-serif);font-size:0.8rem;font-weight:700;color:var(--color-surface-dark);">La Carta di Vietnamonamour</div>
+          </div>
+          <!-- Back button -->
+          <div style="padding:0.5rem 0.75rem 0;font-size:0.72rem;font-weight:300;color:var(--color-surface-dark);">&lt; Indietro</div>
+          <!-- Cat section header -->
+          <div style="display:grid;grid-template-columns:1.75rem 1fr;gap:0.4rem;align-items:start;padding:0.5rem 0.75rem 0.625rem;border-bottom:1px solid var(--menu-separator-strong);">
+            <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(70,1,18,.4);border-radius:2px;margin-top:.15rem;flex-shrink:0;"></div>
+            <div>
+              <div style="font-size:0.8rem;font-weight:300;color:var(--color-surface-dark);">Business lunch</div>
+              <div style="font-size:0.65rem;font-weight:300;color:var(--color-surface-dark);opacity:.65;">Menù pranzo da lun-ven. No festivi.</div>
+            </div>
+          </div>
+          <!-- Combo block 1 -->
+          <div style="padding:0.75rem 0.75rem 0.25rem;border-bottom:1px solid var(--menu-separator);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;margin-bottom:0.4rem;">
+              <div style="font-size:0.78rem;font-weight:300;color:var(--color-accent-orange);flex:1;line-height:1.3;">Pho + 2 Nem di carne</div>
+              <div style="font-size:0.72rem;font-weight:600;color:var(--color-text-main);white-space:nowrap;">16€</div>
+            </div>
+            <div style="padding:0.3rem 0;">
+              <div style="font-size:0.72rem;font-weight:500;color:var(--color-surface-dark);">Nem di carne (Bis)</div>
+              <div style="font-size:0.62rem;color:var(--color-text-muted);">Due involtini in sfoglia di riso...</div>
+              <div style="margin-top:0.25rem;">
+                <span style="font-size:0.6rem;background:rgba(21,97,109,.12);color:#15616d;border:1px solid rgba(21,97,109,.25);border-radius:var(--radius-sm);padding:.1rem .35rem;font-weight:600;">Gluten Free</span>
+              </div>
+            </div>
+            <div style="padding:0.4rem 0 0.25rem;border-top:1px solid var(--menu-separator);margin-top:0.2rem;">
+              <div style="font-size:0.6rem;color:var(--color-text-muted);margin-bottom:0.2rem;">Allergeni presenti nel menù:</div>
+              <span style="font-size:0.6rem;border:1px solid rgba(70,1,18,.35);color:var(--color-surface-dark);border-radius:var(--radius-sm);padding:.1rem .3rem;">Pesce</span>
+            </div>
+          </div>
+          <!-- Combo block 2 (preview) -->
+          <div style="padding:0.75rem 0.75rem 0.25rem;opacity:.65;">
+            <div style="display:flex;justify-content:space-between;">
+              <div style="font-size:0.72rem;font-weight:300;color:var(--color-accent-orange);">Pollo al curry con riso…</div>
+              <div style="font-size:0.72rem;font-weight:600;">16€</div>
+            </div>
+          </div>
+          <!-- Footer -->
+          <div style="background:var(--color-background);border-top:1px solid var(--menu-separator);padding:0.5rem 0.75rem;text-align:center;">
+            <div style="font-size:0.62rem;color:var(--color-text-muted);">© 2026 Vietnamonamour</div>
+          </div>
+        </div>
+        <div class="ds-classes mt-2">
+          <strong>Struttura Next.js</strong>
+          <code>MenuHeader → &lt;nav&gt; BackButton → &lt;main px-4&gt; → &lt;section py-9&gt; [CatSectionHeader + ComboBlock ×N] → FooterFull</code><br>
+          <strong>Nota:</strong> nessuna CategoryNav sticky — ogni slug ha la sua pagina dedicata
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer stack -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Z-index stack — strati di posizionamento</div>
+      <table class="ds-table">
+        <thead><tr><th>Layer</th><th>Elemento</th><th>z-index</th><th>Tailwind v4</th></tr></thead>
+        <tbody>
+          <tr><td>Top</td><td>Modale / Overlay</td><td>50</td><td><code>z-50</code></td></tr>
+          <tr><td>Nav</td><td>CategoryNav sticky (se presente)</td><td>20</td><td><code>z-20</code></td></tr>
+          <tr><td>Subheader</td><td>Group title sticky</td><td>5</td><td><code>z-[5]</code></td></tr>
+          <tr><td>Base</td><td>Contenuto</td><td>0</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Regole contrasto -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Regole contrasto — menu page</div>
+      <table class="ds-table">
+        <thead><tr><th>Sfondo</th><th>Testi consentiti</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>bg-background</code> (#FFEDD7)</td>
+            <td><code>text-text-main</code>, <code>text-text-muted</code>, <code>text-surface-dark</code></td>
+            <td>Sfondo pagina — Header, SectionCard, Cat header, Combo blocks</td>
+          </tr>
+          <tr>
+            <td><code>bg-surface</code> (#FFFFFF)</td>
+            <td><code>text-text-main</code>, <code>text-text-muted</code></td>
+            <td>Solo DishCard standard</td>
+          </tr>
+          <tr>
+            <td><code>bg-text-main</code> (#080F2C)</td>
+            <td><code>text-text-light</code>, <code>text-accent-gold</code></td>
+            <td>Badge --default, CategoryPill active — <strong>NON usare per footer</strong></td>
+          </tr>
+          <tr>
+            <td><code>bg-accent-gold/6</code></td>
+            <td><code>text-surface-dark</code>, <code>text-text-main</code></td>
+            <td>MenuFissoCard background</td>
+          </tr>
+          <tr>
+            <td><strong>❌ bg-surface-dark</strong> (#460112)</td>
+            <td>—</td>
+            <td><strong>Non usare come sfondo.</strong> Solo come <code>text-surface-dark</code> su sfondi chiari.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Responsive breakpoints -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Comportamento responsive</div>
+      <table class="ds-table">
+        <thead><tr><th>Breakpoint</th><th>Variazioni menu-specifiche</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Mobile ≤640px (default)</td>
+            <td>Layout a colonna singola, DishRow standard, tutto a larghezza piena</td>
+          </tr>
+          <tr>
+            <td><code>md</code> ≥768px</td>
+            <td>Container centrato: <code>md:w-[48rem] md:mx-auto</code></td>
+          </tr>
+          <tr>
+            <td><code>lg</code> ≥1024px</td>
+            <td>Container: <code>lg:w-[56rem]</code> con padding aumentato</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =========================================================
+       9. FOOTER — Due varianti
+       ========================================================= -->
+  <section class="ds-section" id="footer">
+    <h2 class="ds-section-title">Footer — Due varianti</h2>
+    <p class="ds-section-subtitle">
+      Il footer usa sempre <strong>sfondo neutro</strong> (<code>bg-background</code> panna #FFEDD7) — mai <code>bg-text-main</code> blu notte.
+      Esistono due varianti: <strong>FooterSimple</strong> per la Home Index e <strong>FooterFull</strong> per le Category Page.
+    </p>
+
+    <!-- Variante A: FooterSimple -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante A — FooterSimple · Home Index <code>/</code></div>
+      <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:1.25rem;">
+        Copyright a sinistra + ThemeToggle button (☀️/🌙) a destra. Sfondo panna, bordo-top bordeaux/18.
+        Il toggle salva la preferenza in <code>localStorage</code> con chiave <code>"vtn-theme"</code>.
+      </p>
+
+      <div class="specimen" style="padding:0;overflow:hidden;border-radius:var(--radius-lg);">
+        <div class="footer-simple">
+          <p class="footer-copyright__text">© 2026 Vietnamonamour – Tutti i diritti riservati</p>
+          <button class="theme-toggle" aria-label="Cambia tema chiaro/scuro">
+            <svg class="icon-sun" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="4"/>
+              <line x1="12" y1="2"  x2="12" y2="5"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="2"  y1="12" x2="5"  y2="12"/>
+              <line x1="19" y1="12" x2="22" y2="12"/>
+              <line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/>
+              <line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/>
+              <line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/>
+              <line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="ds-classes mt-3">
+        <strong>Wrapper</strong>
+        <code>bg-background border-t border-surface-dark/18 px-5 py-4 flex items-center justify-between gap-4</code><br>
+        <strong>Testo copyright</strong>
+        <code>font-sans text-[13px] font-normal text-text-muted</code><br>
+        <strong>ThemeToggle</strong>
+        <code>w-[34px] h-[34px] rounded-full bg-surface-dark/[0.08] flex items-center justify-center hover:bg-surface-dark/[0.15]</code>
+      </div>
+
+      <pre class="mt-3"><code>&lt;!-- FooterSimple — Home Index --&gt;
+&lt;footer className="bg-background border-t border-surface-dark/18 px-5 py-4 flex items-center justify-between gap-4"&gt;
+  &lt;p className="font-sans text-[13px] text-text-muted"&gt;
+    © {year} Vietnamonamour – Tutti i diritti riservati
+  &lt;/p&gt;
+  &lt;ThemeToggle /&gt;
+&lt;/footer&gt;
+
+&lt;!-- ThemeToggle component --&gt;
+&lt;button
+  onClick={toggleTheme}
+  className="w-[34px] h-[34px] rounded-full bg-surface-dark/[0.08] flex items-center justify-center
+             hover:bg-surface-dark/[0.15] transition-all duration-200"
+  aria-label="Cambia tema chiaro/scuro"
+&gt;
+  {theme === 'light' ? &lt;SunIcon /&gt; : &lt;MoonIcon /&gt;}
+&lt;/button&gt;
+
+&lt;!-- Script localStorage (vanilla JS — per prototipo HTML) --&gt;
+&lt;script&gt;
+  const toggle = document.getElementById('themeToggle');
+  const root   = document.documentElement;
+  const saved  = localStorage.getItem('vtn-theme') || 'light';
+  root.setAttribute('data-theme', saved);
+  toggle.addEventListener('click', () => {
+    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('vtn-theme', next);
+  });
+&lt;/script&gt;</code></pre>
+    </div>
+
+    <!-- Variante B: FooterFull -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Variante B — FooterFull · Category Page <code>/[slug]</code></div>
+      <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:1.25rem;">
+        Sezione Servizi + Avviso Allergeni in layout 2 colonne (desktop) / colonna singola (mobile), seguita dalla barra copyright.
+        Sfondo panna identico al resto della pagina.
+      </p>
+
+      <!-- Specimen desktop -->
+      <div class="ds-annotation">Desktop — 2 colonne</div>
+      <div class="specimen" style="padding:0;overflow:hidden;border-radius:var(--radius-lg);">
+        <div class="footer-full">
+          <div class="footer-full__body">
+
+            <!-- Colonna sinistra: Servizi -->
+            <div>
+              <h3 class="footer-block__title">Servizi</h3>
+              <div class="service-row">
+                <span class="service-row__name">Coperto</span>
+                <span class="service-row__price">2€</span>
+              </div>
+              <div class="service-row">
+                <span class="service-row__name">Diritto di dolce</span>
+                <span class="service-row__price">2€</span>
+              </div>
+              <div class="service-row">
+                <span class="service-row__name">Diritto di tappo</span>
+                <span class="service-row__price">3€</span>
+              </div>
+            </div>
+
+            <!-- Colonna destra: Avviso Allergeni -->
+            <div>
+              <h3 class="footer-block__title">Avviso Allergeni</h3>
+              <div class="allergen-warning-box">
+                <p>Avvisare prima di ordinare qualunque tipo di allergia o intolleranza alimentare.</p>
+                <p>Verificare sempre con il personale i piatti gluten free, vegani, senza latticini, senza uova e gli allergeni.</p>
+              </div>
+            </div>
+
+          </div>
+          <!-- Barra copyright -->
+          <div class="footer-copyright">
+            <p class="footer-copyright__text">© 2026 Vietnamonamour – Tutti i diritti riservati</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Specimen mobile -->
+      <div class="ds-annotation mt-4">Mobile — colonna singola (max-width 390px)</div>
+      <div class="specimen" style="padding:0;overflow:hidden;border-radius:var(--radius-lg);max-width:390px;margin-inline:auto;">
+        <div class="footer-full">
+          <div class="footer-full__body" style="grid-template-columns:1fr;">
+            <div>
+              <h3 class="footer-block__title">Servizi</h3>
+              <div class="service-row">
+                <span class="service-row__name">Coperto</span>
+                <span class="service-row__price">2€</span>
+              </div>
+              <div class="service-row">
+                <span class="service-row__name">Diritto di dolce</span>
+                <span class="service-row__price">2€</span>
+              </div>
+              <div class="service-row">
+                <span class="service-row__name">Diritto di tappo</span>
+                <span class="service-row__price">3€</span>
+              </div>
+            </div>
+            <div>
+              <h3 class="footer-block__title">Avviso Allergeni</h3>
+              <div class="allergen-warning-box">
+                <p>Avvisare prima di ordinare qualunque tipo di allergia o intolleranza alimentare.</p>
+                <p>Verificare sempre con il personale i piatti gluten free, vegani, senza latticini, senza uova e gli allergeni.</p>
+              </div>
+            </div>
+          </div>
+          <div class="footer-copyright">
+            <p class="footer-copyright__text">© 2026 Vietnamonamour – Tutti i diritti riservati</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Token table -->
+      <table class="ds-table mt-4">
+        <thead><tr><th>Elemento</th><th>Tailwind v4</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Wrapper footer-full</td>
+            <td><code>bg-background mt-12</code></td>
+            <td>Sfondo panna — identico alla pagina</td>
+          </tr>
+          <tr>
+            <td>Body (grid)</td>
+            <td><code>grid grid-cols-2 gap-x-12 gap-y-8 px-4 pt-8 pb-6 max-w-4xl mx-auto md:grid-cols-2 grid-cols-1</code></td>
+            <td>1 colonna mobile, 2 colonne ≥640px</td>
+          </tr>
+          <tr>
+            <td>Titolo blocco</td>
+            <td><code>font-sans text-base font-bold text-surface-dark mb-5</code></td>
+            <td>Bordeaux #460112</td>
+          </tr>
+          <tr>
+            <td>ServiceRow</td>
+            <td><code>flex items-baseline justify-between gap-3 py-2.5 border-b border-surface-dark/18 last:border-b-0</code></td>
+            <td>Nome + prezzo, separatore leggero</td>
+          </tr>
+          <tr>
+            <td>Nome servizio</td>
+            <td><code>font-sans text-[15px] font-normal text-surface-dark flex-1</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>Prezzo servizio</td>
+            <td><code>font-sans text-[15px] font-semibold text-surface-dark whitespace-nowrap</code></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>AllergenWarningBox</td>
+            <td><code>bg-accent-orange border border-accent-orange/70 rounded-lg p-5</code></td>
+            <td>Sfondo arancione DS #ef5808</td>
+          </tr>
+          <tr>
+            <td>Testo warning box</td>
+            <td><code>font-sans text-sm font-normal text-text-light leading-relaxed</code></td>
+            <td>Panna #ffedd7 su arancione</td>
+          </tr>
+          <tr>
+            <td>Barra copyright</td>
+            <td><code>border-t border-surface-dark/18 py-5 px-4 text-center</code></td>
+            <td>Comune a entrambe le varianti</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <pre class="mt-3"><code>&lt;!-- FooterFull — Category Page --&gt;
+&lt;footer className="bg-background mt-12"&gt;
+  &lt;div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-x-12 px-4 pt-8 pb-6 max-w-4xl mx-auto"&gt;
+
+    &lt;!-- Servizi --&gt;
+    &lt;div&gt;
+      &lt;h3 className="font-sans text-base font-bold text-surface-dark mb-5"&gt;Servizi&lt;/h3&gt;
+      {services.map(s =&gt; (
+        &lt;div className="flex items-baseline justify-between gap-3 py-2.5 border-b border-surface-dark/18 last:border-b-0"&gt;
+          &lt;span className="font-sans text-[15px] font-normal text-surface-dark"&gt;{s.nome}&lt;/span&gt;
+          &lt;span className="font-sans text-[15px] font-semibold text-surface-dark"&gt;{s.prezzo}&lt;/span&gt;
+        &lt;/div&gt;
+      ))}
+    &lt;/div&gt;
+
+    &lt;!-- Avviso Allergeni --&gt;
+    &lt;div&gt;
+      &lt;h3 className="font-sans text-base font-bold text-surface-dark mb-5"&gt;Avviso Allergeni&lt;/h3&gt;
+      &lt;div className="bg-accent-orange border border-accent-orange/70 rounded-lg p-5"&gt;
+        &lt;p className="font-sans text-sm font-normal text-text-light leading-relaxed"&gt;
+          Avvisare prima di ordinare qualunque tipo di allergia o intolleranza alimentare.
+        &lt;/p&gt;
+        &lt;p className="font-sans text-sm font-normal text-text-light leading-relaxed mt-3"&gt;
+          Verificare sempre con il personale i piatti gluten free, vegani,
+          senza latticini, senza uova e gli allergeni.
+        &lt;/p&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+  &lt;/div&gt;
+
+  &lt;!-- Copyright --&gt;
+  &lt;div className="border-t border-surface-dark/18 py-5 px-4 text-center"&gt;
+    &lt;p className="font-sans text-[13px] text-text-muted"&gt;
+      © {year} Vietnamonamour – Tutti i diritti riservati
+    &lt;/p&gt;
+  &lt;/div&gt;
+&lt;/footer&gt;</code></pre>
+
+      <!-- Nota contrasto -->
+      <div class="specimen mt-3" style="background:rgba(239,88,8,.06);border:1px solid rgba(239,88,8,.2);">
+        <p style="font-size:0.82rem;color:var(--color-text-main);line-height:1.6;">
+          <strong>⚠️ Contrasto AllergenWarningBox:</strong> il testo usa <code>text-text-light</code> (panna #FFEDD7) su sfondo <code>bg-accent-orange</code> (#EF5808).
+          Contrasto WCAG: ~3.5:1 — accettabile per testo di dimensione ≥14px. <strong>Non usare</strong> <code>text-white</code> puro (#FFF) che rompe la coerenza DS.
+        </p>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- =========================================================
+       10. DARK MODE — Token & Implementazione
+       ========================================================= -->
+  <section class="ds-section" id="dark-mode">
+    <h2 class="ds-section-title">Dark Mode — Token &amp; Implementazione</h2>
+    <p class="ds-section-subtitle">
+      Feature opzionale lato client, attiva sulla <strong>Home Index</strong> (<code>/</code>).
+      Non estesa alla Category Page. Il tema è controllato dall'attributo <code>data-theme="light|dark"</code>
+      su <code>&lt;html&gt;</code> e salvato in <code>localStorage</code> con chiave <code>"vtn-theme"</code>.
+    </p>
+
+    <!-- Token table -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Token CSS — confronto light / dark</div>
+      <table class="ds-table">
+        <thead>
+          <tr><th>Ruolo</th><th>Light (<code>[data-theme="light"]</code>)</th><th>Dark (<code>[data-theme="dark"]</code>)</th><th>Regola DS</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sfondo pagina esterna</td>
+            <td><code>#1c1c2e</code></td>
+            <td><code>#04040f</code></td>
+            <td>Frame decorativo — libero</td>
+          </tr>
+          <tr>
+            <td>Sfondo app (phone frame)</td>
+            <td><code>#ffedd7</code> bg-background</td>
+            <td><code>#080f2c</code> bg-text-main</td>
+            <td>Unico scuro DS-conforme per sfondi</td>
+          </tr>
+          <tr>
+            <td>Sfondo header / footer</td>
+            <td><code>#ffedd7</code></td>
+            <td><code>#06091f</code> (blu notte profondo)</td>
+            <td>Leggera stratificazione visiva</td>
+          </tr>
+          <tr>
+            <td>Testo brand / icone SVG</td>
+            <td><code>#460112</code> surface-dark</td>
+            <td><code>#ffedd7</code> text-light</td>
+            <td>WCAG ~14:1 AAA ✅ — massimo contrasto</td>
+          </tr>
+          <tr>
+            <td>Testo muted (sottotitoli)</td>
+            <td><code>rgba(8,15,44,.6)</code></td>
+            <td><code>rgba(255,237,215,.48)</code></td>
+            <td>Panna a opacità ridotta</td>
+          </tr>
+          <tr>
+            <td>Testo copyright</td>
+            <td><code>rgba(8,15,44,.50)</code></td>
+            <td><code>rgba(255,237,215,.36)</code></td>
+            <td>Ancora più attenuato</td>
+          </tr>
+          <tr>
+            <td>Separatori</td>
+            <td><code>rgba(70,1,18,.18)</code></td>
+            <td><code>rgba(255,237,215,.09)</code></td>
+            <td>Panna trasparente su scuro</td>
+          </tr>
+          <tr>
+            <td>Separatore strong (header)</td>
+            <td><code>rgba(70,1,18,.35)</code></td>
+            <td><code>rgba(255,237,215,.16)</code></td>
+            <td>Leggermente più visibile</td>
+          </tr>
+          <tr>
+            <td>Hover card</td>
+            <td><code>rgba(70,1,18,.03)</code></td>
+            <td><code>rgba(255,237,215,.03)</code></td>
+            <td>Sottilissimo — solo feedback touch</td>
+          </tr>
+          <tr>
+            <td>Toggle button bg</td>
+            <td><code>rgba(70,1,18,.08)</code></td>
+            <td><code>rgba(255,237,215,.08)</code></td>
+            <td>Cerchio sfumato coerente</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Regole contrasto dark -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Regole di contrasto — dark mode</div>
+      <table class="ds-table">
+        <thead><tr><th>Sfondo</th><th>Testo consentito</th><th>WCAG</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>#080f2c</code> bg-text-main</td>
+            <td><code>text-text-light</code> #ffedd7 panna</td>
+            <td>~14:1 AAA ✅</td>
+            <td><strong>Scelta adottata</strong> — massimo contrasto, DS-conforme</td>
+          </tr>
+          <tr>
+            <td><code>#080f2c</code> bg-text-main</td>
+            <td><code>text-accent-gold</code> #f8b624</td>
+            <td>~8.5:1 AAA ✅</td>
+            <td>Consentito dal DS per accenti (prezzi, highlight)</td>
+          </tr>
+          <tr>
+            <td><code>#080f2c</code> bg-text-main</td>
+            <td><code>text-accent-orange</code> #ef5808</td>
+            <td>~4.2:1 AA ⚠️</td>
+            <td><strong>❌ Non usare come testo</strong> — solo sfondo/badge anche in dark</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="specimen mt-3" style="background:rgba(239,88,8,.06);border:1px solid rgba(239,88,8,.2);">
+        <p style="font-size:0.82rem;color:var(--color-text-main);line-height:1.6;">
+          <strong>⚠️ accent-orange in dark mode:</strong> anche se il contrasto AA è tecnicamente sufficiente per testi grandi,
+          <code>accent-orange</code> è definito dal DS come colore di <em>sfondo</em> (badge, allergen box) — non come colore testo.
+          Usarlo come testo in dark romperebbe la coerenza semantica del sistema.
+        </p>
+      </div>
+    </div>
+
+    <!-- Tecnica SVG filter -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Recolorazione SVG inline — CSS filter</div>
+      <p style="font-size:0.85rem;color:var(--color-text-muted);margin-bottom:1rem;">
+        Le icone delle SectionCard sono SVG inline con colori hardcoded (<code>fill="#460112"</code>, <code>stroke="#460112"</code>).
+        Il CSS non può sovrascrivere attributi inline con la normale cascata.
+        La soluzione adottata è un <strong>CSS filter</strong> applicato all'elemento <code>&lt;svg&gt;</code>:
+        converte qualsiasi colore scuro → panna <code>#ffedd7</code>.
+      </p>
+      <pre><code>/* Dark mode — recolorazione SVG inline */
+[data-theme="dark"] .section-card__icon svg,
+[data-theme="dark"] .menu-header__logo svg {
+  filter: brightness(0) saturate(100%) invert(97%)
+          sepia(10%) saturate(300%) hue-rotate(320deg)
+          brightness(103%) contrast(97%);
+  transition: filter 0.35s ease;
+}
+
+/* Light mode — nessun filtro */
+[data-theme="light"] .section-card__icon svg,
+[data-theme="light"] .menu-header__logo svg {
+  filter: none;
+}</code></pre>
+      <div class="specimen mt-3" style="background:rgba(8,15,44,.03);border:1px solid rgba(8,15,44,.08);">
+        <p style="font-size:0.82rem;color:var(--color-text-main);line-height:1.6;">
+          <strong>Come funziona:</strong> <code>brightness(0)</code> azzera tutti i canali colore → nero puro.
+          <code>invert(97%)</code> lo porta a quasi-bianco. <code>sepia + hue-rotate + saturate</code>
+          lo spingono verso la tonalità calda della panna <code>#ffedd7</code>.
+          Il filtro va applicato sul tag <code>&lt;svg&gt;</code>, non sul contenitore.
+        </p>
+      </div>
+    </div>
+
+    <!-- Implementazione JS -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Implementazione JavaScript</div>
+      <pre><code>// Vanilla JS (prototipo HTML)
+const toggle = document.getElementById('themeToggle');
+const root   = document.documentElement;
+
+// Ripristina preferenza salvata (default: 'light')
+const saved = localStorage.getItem('vtn-theme') || 'light';
+root.setAttribute('data-theme', saved);
+
+toggle.addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  root.setAttribute('data-theme', next);
+  localStorage.setItem('vtn-theme', next);
+});
+
+// React hook equivalente (Next.js)
+function useTheme() {
+  const [theme, setTheme] = useState&lt;'light' | 'dark'&gt;(() =>
+    (localStorage.getItem('vtn-theme') as 'light' | 'dark') || 'light'
+  );
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('vtn-theme', theme);
+  }, [theme]);
+  return { theme, toggle: () => setTheme(t => t === 'light' ? 'dark' : 'light') };
+}</code></pre>
+    </div>
+
+    <!-- Specimen dark panel -->
+    <div class="ds-subsection">
+      <div class="ds-subsection-title">Preview dark mode — Home Index (simulato)</div>
+      <div class="specimen" style="padding:0;border-radius:var(--radius-lg);overflow:hidden;max-width:280px;margin-inline:auto;background:#080f2c;box-shadow:0 16px 48px rgba(0,0,0,.5);">
+        <!-- Header dark -->
+        <div style="background:#06091f;padding:1rem 0.875rem 0.875rem;border-bottom:1px solid rgba(255,237,215,.16);display:flex;flex-direction:column;align-items:center;text-align:center;">
+          <div style="width:2rem;height:2rem;border:1.5px solid #ffedd7;border-radius:2px;margin-bottom:0.35rem;opacity:.7;"></div>
+          <div style="font-family:var(--font-serif);font-size:0.9rem;font-weight:700;color:#ffedd7;">Vietnamonamour</div>
+          <div style="font-size:0.55rem;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,237,215,.48);margin-top:.2rem;">Cucina Vietnamita · Milano</div>
+        </div>
+        <!-- Eyebrow -->
+        <div style="padding:0.875rem 0.875rem 0.5rem;font-size:0.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,237,215,.48);">Il nostro menu</div>
+        <!-- Section rows dark -->
+        <div style="padding:0 0.875rem;">
+          <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,237,215,.09);">
+            <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(255,237,215,.4);border-radius:2px;flex-shrink:0;"></div>
+            <span style="font-size:0.82rem;color:#ffedd7;flex:1;">Menù pranzo</span>
+            <span style="font-size:0.7rem;color:#ffedd7;opacity:.32;">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,237,215,.09);">
+            <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(255,237,215,.4);border-radius:2px;flex-shrink:0;"></div>
+            <span style="font-size:0.82rem;color:#ffedd7;flex:1;">Menù degustazione</span>
+            <span style="font-size:0.7rem;color:#ffedd7;opacity:.32;">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,237,215,.09);">
+            <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(255,237,215,.4);border-radius:2px;flex-shrink:0;"></div>
+            <span style="font-size:0.82rem;color:#ffedd7;flex:1;">Menù alla carta</span>
+            <span style="font-size:0.7rem;color:#ffedd7;opacity:.32;">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.6rem;padding:0.6rem 0;">
+            <div style="width:1.25rem;height:1.25rem;border:1px solid rgba(255,237,215,.4);border-radius:2px;flex-shrink:0;"></div>
+            <span style="font-size:0.82rem;color:#ffedd7;flex:1;">I nostri dolci</span>
+            <span style="font-size:0.7rem;color:#ffedd7;opacity:.32;">›</span>
+          </div>
+        </div>
+        <!-- Footer dark -->
+        <div style="background:#06091f;border-top:1px solid rgba(255,237,215,.09);padding:0.6rem 0.875rem;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.6rem;color:rgba(255,237,215,.36);">© 2025 Vietnamonamour · Milano</span>
+          <div style="width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(255,237,215,.08);display:flex;align-items:center;justify-content:center;">
+            <svg viewBox="0 0 24 24" style="width:.7rem;height:.7rem;stroke:#ffedd7;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</div><!-- /container -->
+
+<!-- =========================================================
+     PAGE FOOTER (documento DS)
+     ========================================================= -->
+<div style="background:var(--color-background);border-top:1px solid var(--menu-separator-strong);padding:2rem 0;margin-top:4rem;">
+  <div class="container" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <div style="font-family:var(--font-serif);font-size:1rem;color:var(--color-surface-dark);margin-bottom:0.25rem;">Menu Design System</div>
+      <div style="font-size:0.75rem;color:var(--color-text-muted);line-height:1.5;">
+        Vietnamonamour · Milano · Estende <code>design-system.html</code>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--color-text-muted);text-align:right;line-height:1.7;opacity:.6;">
+      Stack: Next.js 16 · Tailwind v4 · TypeScript<br>
+      Aggiornato: 2026-03-08 · v2 (dark mode, SVG filter, FooterSimple toggle)
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+---
+description: Architettura SSG e data flow — leggere prima di qualsiasi intervento su pagine, routing o fetching
+alwaysApply: false
+globs: ["app/**/*.tsx", "src/lib/**/*.ts", "src/types/**/*.ts"]
+---
+
+# Architettura SSG e Data Flow — Frontend Menu
+
+## Scopo del frontend
+
+Menu digitale statico per il ristorante **Vietnamonamour** (Milano).
+Il cliente scansiona un QR code e consulta il menu sul telefono.
+
+## Routing — due livelli
+
+```
+/                     → HomeIndex — indice sezioni come card cliccabili
+/menu/[slug]          → CategoryPage — lista voci di una sezione
+/design-system        → Preview componenti (solo sviluppo)
+```
+
+**⚠️ Gli slug NON esistono nel backend Payload.**
+Sono generati a build-time con `slugify(label)` in `normalizeStandardItems()`.
+Se la `label` di una sezione cambia nel CMS, lo slug cambia e i link precedenti diventano 404.
+
+## Data flow — build-time
+
+```
+pnpm build
+  └─ getStaticMenuData()  (src/lib/api.ts)
+       ├─ fetchAllDocs('piatti', 'vini', 'birre', 'liquori', 'cocktail', 'bevande')
+       ├─ fetchAllDocs('menu-fisso', depth=2)
+       ├─ fetchAllDocs('allergeni', 'nazioni', 'regioni', 'zone')
+       ├─ fetchGlobalSafe('menu-config', depth=2)
+       ├─ fetchGlobalSafe('generali', depth=2)
+       └─ fetchGlobalSafe('ordinamento-menu', depth=1)
+       ↓
+       normalizeStandardItems()   → aggiunge slug da slugify(label)
+       resolveAllSezioni()         → Query Builder + sort/group
+       hydrateVini()               → join geografico nazioni/regioni/zone
+       ↓
+  StaticMenuData  →  passato come props alle pagine SSG
+```
+
+## Data flow — runtime (browser)
+
+```
+MenuProvider (client component)
+  ├─ useTimekeeper(generali)     tick ogni 30s  →  isOpen, activeSlot, isHoliday
+  ├─ useMenuStructure(...)       →  sezioni filtrate per slot/giorno/activeDays
+  └─ polling ogni 5 min          →  fetch disponibilita.json da GCS
+       └─ DisponibilitaResponse  →  filtro piatti esauriti/nascosti in MenuSection
+```
+
+## generateStaticParams — obbligatorio
+
+```typescript
+// app/menu/[slug]/page.tsx — NON rimuovere
+export async function generateStaticParams() {
+  const data = await getStaticMenuData()
+  return data.sezioniRisolte.map(s => ({ slug: s.slug }))
+}
+```
+
+Senza `generateStaticParams`, le pagine dinamiche non vengono generate con `output: 'export'`.
+
+## Tipi discriminati — MenuItem
+
+`MenuItem` è un'unione discriminata — il campo `_type` non esiste nel backend, viene aggiunto a build-time:
+
+```typescript
+type MenuItem = Piatto & { _type: 'piatto' }
+              | Vino   & { _type: 'vino' }
+              | Birra  & { _type: 'birra' }
+              | Liquore & { _type: 'liquore' }
+              | Bevanda & { _type: 'bevanda' }
+
+// Nel Query Builder:
+const item: MenuItem = { ...piatto, _type: 'piatto' }
+```
+
+Usare sempre `_type` per discriminare nei componenti, mai `instanceof` o duck typing.
+
+## Gestione errori — convenzioni
+
+| Scenario | Comportamento atteso |
+|---|---|
+| Collection Payload irraggiungibile | `fetchAllDocs` lancia → build fallisce esplicitamente |
+| Global → errore o `{}` | `fetchGlobalSafe` → `null` → fallback hardcoded |
+| `nazioni`/`regioni`/`zone` → errore | `.catch(() => [])` → campi geografici restano ID numerici |
+| GCS irraggiungibile a runtime | `availability = null` → tutto disponibile |
+| Sezione con tutti i piatti esauriti | `MenuSection` → `null` → sezione invisibile |
+
+Non introdurre mai `try/catch` che inglobano errori delle collection principali:
+se Payload non risponde durante la build, la build deve fallire.

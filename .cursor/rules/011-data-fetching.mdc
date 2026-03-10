@@ -1,0 +1,120 @@
+---
+description: Pattern data fetching e Query Builder — applicare quando si lavora su src/lib/api.ts o si aggiungono endpoint Payload
+alwaysApply: false
+globs: ["src/lib/**/*.ts", "app/**/page.tsx"]
+---
+
+# Data Fetching e Query Builder — Frontend Menu
+
+## Funzioni disponibili in src/lib/api.ts
+
+```typescript
+// Fetch con paginazione automatica (limit=100, scorre tutte le pagine)
+fetchAllDocs<T>(collection: string, options?: FetchOptions): Promise<T[]>
+
+// Fetch global con fallback sicuro su null se risposta vuota o errore
+fetchGlobalSafe<T>(global: string, options?: FetchOptions): Promise<T | null>
+
+// Fetch disponibilità real-time da GCS (client-side)
+getRealTimeAvailability(): Promise<DisponibilitaResponse | null>
+
+// Entry point build-time — aggrega tutti i dati
+getStaticMenuData(): Promise<StaticMenuData>
+```
+
+## Aggiungere una nuova collection al fetch
+
+```typescript
+// In getStaticMenuData() — src/lib/api.ts
+// Aggiungere in parallelo con Promise.all per performance ottimale:
+
+const [piatti, vini, nuovaCollection] = await Promise.all([
+  fetchAllDocs<Piatto>('piatti', { where: { inLista: { equals: true } } }),
+  fetchAllDocs<Vino>('vini', { where: { inLista: { equals: true } }, depth: 1 }),
+  fetchAllDocs<NuovoTipo>('nuovo-slug', { depth: 1 }),
+])
+```
+
+## Depth — regola minima necessaria
+
+| Depth | Quando usarlo |
+|---|---|
+| `0` (default) | Collection senza relazioni da mostrare |
+| `1` | Collection con tipologia/nazione embedded (vini, birre, ecc.) |
+| `2` | `menu-fisso` — piatti e servizi devono essere oggetti popolati |
+
+Non usare depth > 2 senza ragione esplicita: aumenta il payload di risposta.
+
+## Cache strategy — convenzioni esistenti
+
+| Tipo | Cache | Motivazione |
+|---|---|---|
+| Collections menu | `revalidate: 3600` | Cambiano raramente durante la giornata |
+| Global `menu-config` | `revalidate: 3600` | Struttura menu stabile |
+| Global `generali` | `revalidate: 3600` | Orari stabili |
+| Global `ordinamento-menu` | `no-store` | Deve essere sempre fresco |
+| GCS `disponibilita.json` | `no-store` | Disponibilità real-time |
+
+Non modificare la cache strategy senza ragione esplicita documentata.
+
+## Fallback hardcoded — documentati
+
+```typescript
+// src/lib/api.ts — questi fallback sono INTENZIONALI
+const FALLBACK_MENU_CONFIG = {
+  nomeRistorante: 'Vietnamonamour',  // hardcoded
+  // ...altri default
+}
+
+const FALLBACK_GENERALI = {
+  // orari Martedì-Domenica 12:00-15:00 e 19:00-23:00
+  // hardcoded come sicurezza se il CMS non risponde
+}
+```
+
+Non rimuovere questi fallback: garantiscono che il sito funzioni anche se Payload è down.
+
+## Query Builder — resolveMenuSection
+
+Il Query Builder in `src/lib/api.ts` risolve ogni sezione del menu:
+
+```typescript
+resolveMenuSection(sezione: SezioneMenuConfig, allData: AllRawData): SezioneRisolta
+```
+
+Logica Multi-Source Additiva:
+- `sourceCollection` può contenere più collection → i loro item vengono uniti
+- `filterMode: 'all'` → nessun filtro categoria
+- `filterMode: 'include'` → solo le categorie in `targetCategories`
+- `filterMode: 'exclude'` → tutte tranne le categorie in `targetCategories`
+
+## applyOrdinamento — sort e groupBy
+
+```typescript
+applyOrdinamento(items: MenuItem[], collection: string, ordinamento: OrdinamentoMenu): MenuItemGroup[]
+```
+
+Priorità per il sort:
+1. Array ordinato dal CMS (drag&drop in `ordinamento-menu`) — priorità massima
+2. `orderBy` + `orderDirection` dal global
+3. Fallback: ordine di arrivo dall'API
+
+## slugify — convenzione per gli slug
+
+```typescript
+import slugify from 'slugify'  // o utility interna
+
+// Usato per generare slug delle sezioni da label CMS
+const slug = slugify(label, { lower: true, strict: true, locale: 'it' })
+```
+
+**⚠️ Gli slug sono volatili**: se la `label` cambia nel CMS, lo slug cambia.
+Non hardcodare mai uno slug in link o redirect.
+
+## Aggiunta nuovo endpoint Payload — checklist
+
+1. Aggiungere la call in `getStaticMenuData()` con il tipo corretto
+2. Aggiungere il tipo in `src/types/payload-types.ts` se non esiste
+3. Aggiungere il tipo al barrel `src/types/index.ts`
+4. Aggiornare `docs/api-integration.md` con il nuovo endpoint
+5. Aggiornare `docs/CHANGELOG.md`

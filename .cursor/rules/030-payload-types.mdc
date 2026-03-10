@@ -1,0 +1,120 @@
+---
+description: Gestione tipi TypeScript sincronizzati con Payload — applicare quando si modificano tipi o si aggiungono nuove collection al fetch
+alwaysApply: false
+globs: ["src/types/**/*.ts", "src/lib/api.ts"]
+---
+
+# Tipi TypeScript da Payload — Frontend Menu
+
+## File di riferimento
+
+```
+src/types/
+├── payload-types.ts    # Interfacce collections + tipi derivati build-time
+├── disponibilita.ts    # Tipi per il JSON GCS (disponibilità real-time)
+└── index.ts            # Barrel — importare sempre da @/types
+```
+
+## Regola di importazione
+
+```typescript
+// ✅ CORRETTO — sempre dal barrel
+import { Piatto, MenuItem, SezioneRisolta } from '@/types'
+
+// ❌ SBAGLIATO — importazione diretta
+import { Piatto } from '@/types/payload-types'
+```
+
+## ID numerici — regola critica
+
+```typescript
+// ✅ CORRETTO — Payload PostgreSQL usa ID interi
+interface Piatto {
+  id: number    // NON string, NON uuid
+  nome: string
+  // ...
+}
+
+// ❌ SBAGLIATO
+id: string
+id: string | number
+```
+
+## Relazioni — tipo condizionale (populato o ID)
+
+Le relazioni Payload possono essere oggetto popolato o ID numerico,
+a seconda del `depth` usato nella fetch:
+
+```typescript
+// Tipo corretto per un campo relationship
+categoria: CategoriaPiatti | number   // depth=0 → number, depth=1 → oggetto
+
+// Utility per gestire entrambi i casi
+function isPopulated<T>(val: T | number): val is T {
+  return typeof val === 'object'
+}
+```
+
+## Tipi derivati — generati a build-time, non esistono in Payload
+
+| Tipo | Come si genera | Dove |
+|---|---|---|
+| `MenuItem` | Unione discriminata con `_type` aggiunto | `api.ts` — `piattoToItem()`, `vinoToItem()`, ecc. |
+| `SezioneRisolta` | Output del Query Builder | `api.ts` — `resolveMenuSection()` |
+| `SezioneMenuConfig` | `standardItems[n]` con `slug` aggiunto da `slugify()` | `api.ts` — `normalizeStandardItems()` |
+| `StaticMenuData` | Aggregato di tutti i dati build-time | `api.ts` — `getStaticMenuData()` |
+
+## Disponibilità real-time — tipi GCS
+
+```typescript
+// src/types/disponibilita.ts
+type StatoDisponibilita = 'disponibile' | 'esaurito' | 'nascosto'
+
+interface DisponibilitaItem {
+  id: number | string
+  stato: StatoDisponibilita
+  nota?: string
+}
+
+interface DisponibilitaResponse {
+  aggiornatoAl: string
+  piatti: Record<string, DisponibilitaItem>
+  vini: Record<string, DisponibilitaItem>    // ⚠️ definito ma non ancora usato nel rendering
+  messaggioGlobale?: string                   // ⚠️ definito ma non ancora renderizzato
+}
+```
+
+## Aggiunta nuova collection — procedura tipi
+
+1. Aggiungere l'interfaccia in `src/types/payload-types.ts`
+2. Esportarla nel barrel `src/types/index.ts`
+3. Se ha un `_type` discriminante: aggiungerlo all'unione `MenuItem`
+4. Aggiungere la funzione `nomeToItem()` in `src/lib/api.ts`
+5. Aggiornare `docs/api-integration.md` con la mappatura campi
+6. Aggiornare `docs/CHANGELOG.md`
+
+## Modifica tipo esistente — procedura
+
+**Non modificare `payload-types.ts` manualmente per riflettere cambiamenti al backend.**
+Il file deve rimanere sincronizzato con lo schema Payload effettivo.
+
+Procedura corretta:
+1. Verificare la modifica nel backend (campo aggiunto/rimosso/rinominato)
+2. Aggiornare il tipo in `payload-types.ts`
+3. Verificare che tutti i componenti che usano quel tipo compilino senza errori
+4. Aggiornare `docs/api-integration.md`
+
+## LexicalRoot — tipo Rich Text
+
+```typescript
+// Tipo per il contenuto Lexical serializzato da Payload
+interface LexicalRoot {
+  root: {
+    children: LexicalNode[]
+    // ...
+  }
+}
+
+// Usare sempre LexicalRenderer per renderizzare — non parsare manualmente
+import { LexicalRenderer } from '@/components/menu/LexicalRenderer'
+```

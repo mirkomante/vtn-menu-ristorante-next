@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design System — Vietnamonamour</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Philosopher:wght@400;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* -----------------------------------------------------------------------
+       CSS Custom Properties — specchio di globals.css / @theme
+    ----------------------------------------------------------------------- */
+    :root {
+      --font-serif: 'Philosopher', Georgia, serif;
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+
+      --color-background:   #ffedd7;
+      --color-surface:      #ffffff;
+      --color-surface-dark: #460112;
+      --color-text-main:    #080f2c;
+      --color-text-light:   #ffedd7;
+      --color-text-muted:   rgba(8, 15, 44, 0.7);
+      --color-accent-gold:  #f8b624;
+      --color-accent-orange:#ef5808;
+
+      --radius-sm:   0.25rem;
+      --radius-md:   0.375rem;
+      --radius-lg:   0.5rem;
+      --radius-full: 9999px;
+
+      --shadow-sm: 0 1px 3px rgba(8,15,44,.08), 0 1px 2px rgba(8,15,44,.06);
+      --shadow-md: 0 4px 6px rgba(8,15,44,.07), 0 2px 4px rgba(8,15,44,.06);
+      --shadow-lg: 0 10px 15px rgba(8,15,44,.08), 0 4px 6px rgba(8,15,44,.05);
+    }
+
+    /* -----------------------------------------------------------------------
+       Reset / Base
+    ----------------------------------------------------------------------- */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--color-background);
+      color: var(--color-text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    img, video { max-width: 100%; display: block; }
+    button { cursor: pointer; font-family: inherit; }
+    code {
+      font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 0.85em;
+      background: rgba(8,15,44,.08);
+      border-radius: var(--radius-sm);
+      padding: 0.1em 0.35em;
+    }
+
+    /* -----------------------------------------------------------------------
+       Container
+    ----------------------------------------------------------------------- */
+    .container {
+      margin-inline: auto;
+      width: 100%;
+      max-width: 56rem; /* max-w-4xl = 896px */
+      padding-inline: 1rem;
+    }
+    @media (min-width: 640px)  { .container { padding-inline: 1.5rem; } }
+    @media (min-width: 1024px) { .container { padding-inline: 2rem; } }
+
+    /* -----------------------------------------------------------------------
+       Heading
+    ----------------------------------------------------------------------- */
+    .heading {
+      font-family: var(--font-serif);
+      font-weight: 700;
+      color: var(--color-text-main);
+    }
+    .heading--bordeaux { color: var(--color-surface-dark); }
+
+    .heading--1 { font-size: 2.25rem; line-height: 1.2; letter-spacing: -0.025em; }
+    .heading--2 { font-size: 1.875rem; line-height: 1.3; letter-spacing: -0.025em; }
+    .heading--3 { font-size: 1.25rem;  line-height: 1.3; }
+    .heading--4 { font-size: 1.125rem; line-height: 1.4; }
+
+    @media (min-width: 768px) {
+      .heading--1 { font-size: 3rem; }
+      .heading--2 { font-size: 2.25rem; }
+      .heading--3 { font-size: 1.5rem; }
+      .heading--4 { font-size: 1.25rem; }
+    }
+
+    /* -----------------------------------------------------------------------
+       Text
+    ----------------------------------------------------------------------- */
+    .text { font-family: var(--font-sans); color: var(--color-text-main); }
+    .text--muted { color: var(--color-text-muted); }
+
+    .text--lead    { font-size: 1.125rem; line-height: 1.7; }
+    .text--body    { font-size: 1rem;     line-height: 1.7; }
+    .text--small   { font-size: 0.875rem; line-height: 1.5; }
+    .text--caption { font-size: 0.75rem;  line-height: 1.5; }
+
+    @media (min-width: 768px) {
+      .text--lead { font-size: 1.25rem; }
+    }
+
+    /* -----------------------------------------------------------------------
+       Badge
+    ----------------------------------------------------------------------- */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.125rem 0.5rem;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+    }
+    .badge--default   { background: var(--color-text-main);    color: var(--color-text-light); }
+    .badge--highlight { background: var(--color-accent-orange); color: var(--color-text-light); }
+    .badge--gold      { background: var(--color-accent-gold);   color: var(--color-text-main); }
+    .badge--outline   { border: 1px solid var(--color-text-main); color: var(--color-text-main); background: transparent; }
+    .badge--allergen  { border: 1px solid rgba(70,1,18,.4); color: var(--color-surface-dark); background: transparent; }
+
+    /* -----------------------------------------------------------------------
+       Button
+    ----------------------------------------------------------------------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      border: none;
+      transition: background-color 0.15s, opacity 0.15s;
+      cursor: pointer;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn--primary { background: var(--color-text-main); color: var(--color-text-light); }
+    .btn--primary:hover:not(:disabled) { background: rgba(8,15,44,.85); }
+
+    .btn--outline { border: 1px solid var(--color-text-main); color: var(--color-text-main); background: transparent; }
+    .btn--outline:hover:not(:disabled) { background: rgba(8,15,44,.05); }
+
+    .btn--ghost { color: var(--color-text-main); background: transparent; }
+    .btn--ghost:hover:not(:disabled) { background: rgba(8,15,44,.08); }
+
+    .btn--sm { padding: 0.25rem 0.75rem;  font-size: 0.875rem; }
+    .btn--md { padding: 0.375rem 1.25rem; font-size: 1rem; }
+    .btn--lg { padding: 0.5rem 1.75rem;   font-size: 1.125rem; }
+
+    /* Spinner */
+    .btn__spinner {
+      width: 1rem; height: 1rem;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* -----------------------------------------------------------------------
+       Layout helpers
+    ----------------------------------------------------------------------- */
+    .flex         { display: flex; }
+    .flex-wrap    { flex-wrap: wrap; }
+    .flex-col     { flex-direction: column; }
+    .items-center { align-items: center; }
+    .items-start  { align-items: flex-start; }
+    .items-baseline { align-items: baseline; }
+    .justify-between { justify-content: space-between; }
+    .justify-center  { justify-content: center; }
+    .shrink-0     { flex-shrink: 0; }
+    .gap-1   { gap: 0.25rem; }
+    .gap-1\.5 { gap: 0.375rem; }
+    .gap-2   { gap: 0.5rem; }
+    .gap-3   { gap: 0.75rem; }
+    .gap-4   { gap: 1rem; }
+    .gap-6   { gap: 1.5rem; }
+    .w-full  { width: 100%; }
+    .w-20    { width: 5rem; }
+    .max-w-2xl { max-width: 42rem; }
+
+    .grid { display: grid; }
+    .grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 640px)  { .sm\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 768px)  { .md\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); } }
+
+    .mt-1   { margin-top: 0.25rem; }
+    .mt-1\.5 { margin-top: 0.375rem; }
+    .mt-2   { margin-top: 0.5rem; }
+    .mt-3   { margin-top: 0.75rem; }
+    .mt-4   { margin-top: 1rem; }
+    .mt-8   { margin-top: 2rem; }
+    .mt-16  { margin-top: 4rem; }
+    .mb-2   { margin-bottom: 0.5rem; }
+    .mb-3   { margin-bottom: 0.75rem; }
+    .mb-4   { margin-bottom: 1rem; }
+    .mb-6   { margin-bottom: 1.5rem; }
+    .mb-8   { margin-bottom: 2rem; }
+    .mb-10  { margin-bottom: 2.5rem; }
+    .mb-12  { margin-bottom: 3rem; }
+    .px-1   { padding-inline: 0.25rem; }
+    .px-4   { padding-inline: 1rem; }
+    .py-5   { padding-block: 1.25rem; }
+    .py-6   { padding-block: 1.5rem; }
+    .py-8   { padding-block: 2rem; }
+    .py-12  { padding-block: 3rem; }
+    .p-4    { padding: 1rem; }
+    .p-6    { padding: 1.5rem; }
+
+    .rounded-md { border-radius: var(--radius-md); }
+    .rounded-sm { border-radius: var(--radius-sm); }
+
+    .text-center { text-align: center; }
+    .font-medium  { font-weight: 500; }
+    .font-semibold{ font-weight: 600; }
+    .font-bold    { font-weight: 700; }
+    .uppercase    { text-transform: uppercase; }
+    .tracking-widest { letter-spacing: 0.1em; }
+    .line-through { text-decoration: line-through; }
+    .opacity-50   { opacity: 0.5; }
+
+    /* Color utilities */
+    .text-text-main    { color: var(--color-text-main); }
+    .text-text-light   { color: var(--color-text-light); }
+    .text-text-muted   { color: var(--color-text-muted); }
+    .text-surface-dark { color: var(--color-surface-dark); }
+    .text-accent-gold  { color: var(--color-accent-gold); }
+    .text-accent-orange{ color: var(--color-accent-orange); }
+
+    .bg-background  { background-color: var(--color-background); }
+    .bg-surface     { background-color: var(--color-surface); }
+    .bg-surface-dark{ background-color: var(--color-surface-dark); }
+    .bg-text-main   { background-color: var(--color-text-main); }
+    .bg-text-light  { background-color: var(--color-text-light); }
+    .bg-text-muted  { background-color: var(--color-text-muted); }
+    .bg-accent-gold { background-color: var(--color-accent-gold); }
+    .bg-accent-orange{ background-color: var(--color-accent-orange); }
+
+    /* Border utilities */
+    .border           { border: 1px solid; }
+    .border-t         { border-top: 1px solid; }
+    .border-b         { border-bottom: 1px solid; }
+    .border-text-main-10  { border-color: rgba(8,15,44,.10); }
+    .border-text-main-15  { border-color: rgba(8,15,44,.15); }
+    .border-surface-dark-20 { border-color: rgba(70,1,18,.20); }
+    .ring-accent-orange { outline: 2px solid var(--color-accent-orange); outline-offset: 0; }
+
+    /* -----------------------------------------------------------------------
+       Section divider
+    ----------------------------------------------------------------------- */
+    .section-divider {
+      border-top: 1px solid rgba(8,15,44,.10);
+      padding-top: 2.5rem;
+    }
+    .section-divider .heading--2 { margin-bottom: 2rem; }
+
+    /* -----------------------------------------------------------------------
+       Color swatch
+    ----------------------------------------------------------------------- */
+    .color-swatch {
+      height: 5rem;
+      width: 100%;
+      border-radius: var(--radius-md);
+    }
+
+    /* -----------------------------------------------------------------------
+       Dish row (Minimal B2)
+    ----------------------------------------------------------------------- */
+    .dish-row {
+      border-bottom: 1px solid rgba(70,1,18,.20);
+      padding-block: 1.25rem;
+    }
+    .dish-row__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .dish-row__price-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.125rem;
+      flex-shrink: 0;
+    }
+    .dish-row__badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-top: 0.75rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Contrast demo blocks
+    ----------------------------------------------------------------------- */
+    .contrast-block {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: var(--radius-md);
+      padding: 0.5rem 1rem;
+    }
+    .contrast-block--forbidden {
+      outline: 2px solid var(--color-accent-orange);
+    }
+
+    /* -----------------------------------------------------------------------
+       Dark panel (footer/navbar demo)
+    ----------------------------------------------------------------------- */
+    .dark-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      border-radius: var(--radius-md);
+      background: var(--color-text-main);
+      padding: 1.5rem;
+    }
+    .dark-panel__label {
+      width: 100%;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-light);
+    }
+    .dark-panel .btn--dark-gold {
+      background: var(--color-accent-gold);
+      color: var(--color-text-main);
+      border: none;
+    }
+    .dark-panel .btn--dark-gold:hover { background: rgba(248,182,36,.9); }
+    .dark-panel .btn--dark-outline {
+      border: 1px solid var(--color-text-light);
+      color: var(--color-text-light);
+      background: transparent;
+    }
+    .dark-panel .btn--dark-outline:hover { background: rgba(255,237,215,.10); }
+    .dark-panel .btn--dark-ghost {
+      color: var(--color-text-light);
+      background: transparent;
+    }
+    .dark-panel .btn--dark-ghost:hover { background: rgba(255,237,215,.10); }
+
+    /* -----------------------------------------------------------------------
+       Semantic rule box
+    ----------------------------------------------------------------------- */
+    .rule-box {
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(8,15,44,.10);
+      background: var(--color-surface);
+      padding: 1rem;
+    }
+
+    /* -----------------------------------------------------------------------
+       Page footer
+    ----------------------------------------------------------------------- */
+    .page-footer {
+      margin-top: 4rem;
+      border-top: 1px solid rgba(8,15,44,.10);
+      padding-block: 2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<main class="py-12">
+  <div class="container">
+
+    <!-- ===================================================================
+         HEADER
+    =================================================================== -->
+    <div class="mb-12">
+      <h1 class="heading heading--1">Design System</h1>
+      <p class="text text--lead text--muted mt-2">
+        Vietnamonamour — tema "Warm &amp; Elegant"
+      </p>
+    </div>
+
+    <!-- ===================================================================
+         PALETTE COLORI
+    =================================================================== -->
+    <div class="section-divider">
+      <h2 class="heading heading--2">Palette Colori</h2>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+
+      <!-- Background -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-background border" style="border-color: rgba(8,15,44,.15);"></div>
+        <div>
+          <p class="text text--small font-medium">Background</p>
+          <p class="text text--caption text--muted">#FFEDD7</p>
+          <p class="text text--caption text--muted">bg-background</p>
+        </div>
+      </div>
+
+      <!-- Surface -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-surface border" style="border-color: rgba(8,15,44,.15);"></div>
+        <div>
+          <p class="text text--small font-medium">Surface</p>
+          <p class="text text--caption text--muted">#FFFFFF</p>
+          <p class="text text--caption text--muted">bg-surface</p>
+        </div>
+      </div>
+
+      <!-- Surface Dark -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-surface-dark"></div>
+        <div>
+          <p class="text text--small font-medium">Surface Dark</p>
+          <p class="text text--caption text--muted">#460112</p>
+          <p class="text text--caption text--muted">bg-surface-dark</p>
+        </div>
+      </div>
+
+      <!-- Text Main -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-text-main"></div>
+        <div>
+          <p class="text text--small font-medium">Text Main</p>
+          <p class="text text--caption text--muted">#080F2C</p>
+          <p class="text text--caption text--muted">bg-text-main</p>
+        </div>
+      </div>
+
+      <!-- Text Light -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-text-light border" style="border-color: rgba(8,15,44,.15);"></div>
+        <div>
+          <p class="text text--small font-medium">Text Light</p>
+          <p class="text text--caption text--muted">#FFEDD7</p>
+          <p class="text text--caption text--muted">bg-text-light</p>
+        </div>
+      </div>
+
+      <!-- Text Muted -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-text-muted"></div>
+        <div>
+          <p class="text text--small font-medium">Text Muted</p>
+          <p class="text text--caption text--muted">rgba(8,15,44,.7)</p>
+          <p class="text text--caption text--muted">bg-text-muted</p>
+        </div>
+      </div>
+
+      <!-- Accent Gold -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-accent-gold"></div>
+        <div>
+          <p class="text text--small font-medium">Accent Gold</p>
+          <p class="text text--caption text--muted">#F8B624</p>
+          <p class="text text--caption text--muted">bg-accent-gold</p>
+        </div>
+      </div>
+
+      <!-- Accent Orange -->
+      <div class="flex flex-col gap-2">
+        <div class="color-swatch bg-accent-orange"></div>
+        <div>
+          <p class="text text--small font-medium">Accent Orange</p>
+          <p class="text text--caption text--muted">#EF5808</p>
+          <p class="text text--caption text--muted">bg-accent-orange</p>
+        </div>
+      </div>
+
+    </div><!-- /grid palette -->
+
+    <!-- Regole di contrasto -->
+    <div class="mt-8 flex flex-col gap-3">
+      <h3 class="heading heading--3 mb-2">Regole di Contrasto</h3>
+
+      <!-- ✅ Consentite -->
+      <p class="text text--small font-semibold uppercase tracking-widest text-text-muted">✅ Consentite</p>
+      <div class="flex flex-wrap gap-3">
+        <div class="contrast-block bg-background border border-text-main-10">
+          <span class="text text--small font-medium text-text-main">text-main</span>
+          <span class="text text--caption text--muted">su bg-background</span>
+        </div>
+        <div class="contrast-block bg-background border border-text-main-10">
+          <span class="text text--small font-medium text-surface-dark">text-surface-dark</span>
+          <span class="text text--caption text--muted">su bg-background (titoli)</span>
+        </div>
+        <div class="contrast-block bg-surface border border-text-main-10">
+          <span class="text text--small font-medium text-text-main">text-main</span>
+          <span class="text text--caption text--muted">su bg-surface</span>
+        </div>
+        <div class="contrast-block bg-text-main">
+          <span class="text text--small font-medium text-text-light">text-light</span>
+          <span class="text text--caption" style="color: rgba(255,237,215,.6)">su bg-text-main ✓ (footer/navbar)</span>
+        </div>
+        <div class="contrast-block bg-text-main">
+          <span class="text text--small font-medium text-accent-gold">accent-gold</span>
+          <span class="text text--caption" style="color: rgba(255,237,215,.6)">su bg-text-main ✓</span>
+        </div>
+      </div>
+
+      <!-- ❌ Vietate -->
+      <p class="text text--small mt-2 font-semibold uppercase tracking-widest text-text-muted">❌ Vietate — non copiare questo codice</p>
+      <div class="flex flex-wrap gap-3">
+        <div class="contrast-block bg-text-main contrast-block--forbidden">
+          <span class="text text--small font-medium text-text-main line-through opacity-50">text-main</span>
+          <span class="text text--caption font-semibold text-accent-orange">su bg-text-main — VIETATO</span>
+        </div>
+        <div class="contrast-block bg-surface-dark contrast-block--forbidden">
+          <span class="text text--small font-medium text-text-main line-through opacity-50">text-main</span>
+          <span class="text text--caption font-semibold text-accent-orange">su bg-surface-dark — VIETATO</span>
+        </div>
+      </div>
+
+      <p class="text text--caption font-medium text-accent-orange">
+        ⚠ Sfondo scuro → testo SEMPRE chiaro (text-light o accent-gold).
+        Sfondo chiaro → testo SEMPRE scuro (text-main, text-muted, text-surface-dark).
+        surface-dark è riservato a footer e navbar sticky — mai per header o contenuto.
+      </p>
+    </div>
+
+    <!-- ===================================================================
+         TIPOGRAFIA
+    =================================================================== -->
+    <div class="section-divider mt-8">
+      <h2 class="heading heading--2">Tipografia</h2>
+    </div>
+
+    <!-- Heading — Philosopher -->
+    <div class="mb-8 flex flex-col gap-4">
+      <div class="flex items-baseline gap-3">
+        <span class="badge badge--outline">h1</span>
+        <h1 class="heading heading--1">Phở Bò</h1>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <span class="badge badge--outline">h2</span>
+        <h2 class="heading heading--2">Antipasti Vietnamiti</h2>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <span class="badge badge--outline">h3</span>
+        <h3 class="heading heading--3">Gỏi Cuốn — Involtini Freschi</h3>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <span class="badge badge--outline">h4</span>
+        <h4 class="heading heading--4">Ingredienti e Allergeni</h4>
+      </div>
+      <div class="flex items-baseline gap-3">
+        <span class="badge badge--outline">h2 bordeaux</span>
+        <h2 class="heading heading--2 heading--bordeaux">Antipasti</h2>
+      </div>
+    </div>
+
+    <!-- Text — DM Sans -->
+    <div class="mb-2 flex items-center gap-2">
+      <span class="badge badge--gold">su bg-background — stile approvato</span>
+    </div>
+    <div class="mb-6 flex flex-col gap-3 px-1">
+      <p class="text text--lead">
+        Zuppa tradizionale vietnamita con brodo di manzo cotto 12 ore,
+        noodles di riso, fettine di manzo e spezie aromatiche.
+      </p>
+      <p class="text text--body">
+        Servito con germogli di soia freschi, foglie di basilico thai,
+        lime e peperoncino. Personalizzabile su richiesta.
+      </p>
+      <p class="text text--body text--muted">
+        Contiene: glutine, soia. Può contenere tracce di arachidi.
+      </p>
+      <p class="text text--body font-semibold text-accent-gold">€ 14,00</p>
+      <p class="text text--small text--muted">
+        Disponibile a pranzo e cena. Porzione singola.
+      </p>
+      <p class="text text--caption text--muted">
+        * I prezzi includono IVA. Informare il personale di eventuali allergie.
+      </p>
+    </div>
+
+    <!-- ===================================================================
+         BOTTONI
+    =================================================================== -->
+    <div class="section-divider">
+      <h2 class="heading heading--2">Bottoni</h2>
+    </div>
+
+    <!-- Varianti su sfondo crema -->
+    <div class="mb-6 flex flex-col gap-6">
+
+      <!-- primary -->
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="badge badge--outline w-20 justify-center">primary</span>
+        <button class="btn btn--primary btn--sm">Piccolo</button>
+        <button class="btn btn--primary btn--md">Medio</button>
+        <button class="btn btn--primary btn--lg">Grande</button>
+        <button class="btn btn--primary btn--md" disabled>Disabilitato</button>
+        <button class="btn btn--primary btn--md" disabled>
+          <span class="btn__spinner"></span>Caricamento
+        </button>
+      </div>
+
+      <!-- outline -->
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="badge badge--outline w-20 justify-center">outline</span>
+        <button class="btn btn--outline btn--sm">Piccolo</button>
+        <button class="btn btn--outline btn--md">Medio</button>
+        <button class="btn btn--outline btn--lg">Grande</button>
+        <button class="btn btn--outline btn--md" disabled>Disabilitato</button>
+        <button class="btn btn--outline btn--md" disabled>
+          <span class="btn__spinner"></span>Caricamento
+        </button>
+      </div>
+
+      <!-- ghost -->
+      <div class="flex flex-wrap items-center gap-4">
+        <span class="badge badge--outline w-20 justify-center">ghost</span>
+        <button class="btn btn--ghost btn--sm">Piccolo</button>
+        <button class="btn btn--ghost btn--md">Medio</button>
+        <button class="btn btn--ghost btn--lg">Grande</button>
+        <button class="btn btn--ghost btn--md" disabled>Disabilitato</button>
+        <button class="btn btn--ghost btn--md" disabled>
+          <span class="btn__spinner"></span>Caricamento
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Bottoni su sfondo scuro -->
+    <div class="dark-panel">
+      <p class="dark-panel__label">
+        Su sfondo scuro (footer/navbar — bg-text-main) — testo SEMPRE text-light o accent-gold:
+      </p>
+      <button class="btn btn--md btn--dark-gold">Prenota un tavolo</button>
+      <button class="btn btn--md btn--dark-outline">Scopri il menu</button>
+      <button class="btn btn--md btn--dark-ghost">Torna su</button>
+    </div>
+
+    <!-- ===================================================================
+         BADGE
+    =================================================================== -->
+    <div class="section-divider mt-8">
+      <h2 class="heading heading--2">Badge</h2>
+    </div>
+
+    <div class="flex flex-col gap-6">
+
+      <!-- Tutte le varianti -->
+      <div>
+        <p class="text text--small text--muted mb-3 font-medium">Varianti disponibili</p>
+        <div class="flex flex-wrap gap-3">
+          <span class="badge badge--default">Tag neutro</span>
+          <span class="badge badge--default">Piccante</span>
+          <span class="badge badge--highlight">Vegan</span>
+          <span class="badge badge--highlight">Gluten Free</span>
+          <span class="badge badge--highlight">Chef consiglia</span>
+          <span class="badge badge--gold">Signature</span>
+          <span class="badge badge--gold">Stagionale</span>
+          <span class="badge badge--outline">Tag outline</span>
+          <span class="badge badge--allergen">Contiene glutine</span>
+          <span class="badge badge--allergen">Contiene arachidi</span>
+        </div>
+      </div>
+
+      <!-- Regola semantica -->
+      <div class="rule-box">
+        <p class="text text--small mb-2 font-semibold text-text-main">Regola semantica badge:</p>
+        <div class="flex flex-col gap-1" style="gap: 0.375rem;">
+          <div class="flex items-center gap-2">
+            <span class="badge badge--allergen">Contiene glutine</span>
+            <p class="text text--caption text--muted">→ <code>allergen</code> — SOLO per allergeni (avvisi)</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge--highlight">Vegan</span>
+            <p class="text text--caption text--muted">→ <code>highlight</code> — vantaggi dietetici e tag promozionali</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge--default">Piccante</span>
+            <p class="text text--caption text--muted">→ <code>default</code> — tag informativi neutri</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge--gold">Signature</span>
+            <p class="text text--caption text--muted">→ <code>gold</code> — badge premium/speciali</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badge in contesto (Minimal B2) -->
+      <div>
+        <p class="text text--small text--muted mb-3 font-medium">Badge in contesto (stile Minimal B2 approvato)</p>
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Phở Bò Đặc Biệt</h3>
+            <span class="text text--body shrink-0 font-bold text-accent-gold">€ 16,00</span>
+          </div>
+          <p class="text text--body text--muted mt-1" style="margin-top: 0.375rem;">
+            Versione speciale con filetto di manzo, tendine e polpette.
+            Brodo di manzo cotto 24 ore.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--highlight">Chef consiglia</span>
+            <span class="badge badge--gold">Signature</span>
+            <span class="badge badge--allergen">Contiene glutine</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================
+         STILE LISTA PIATTI — MINIMAL B2
+    =================================================================== -->
+    <div class="section-divider mt-8">
+      <h2 class="heading heading--2">Stile Lista Piatti — Minimal B2 (approvato)</h2>
+    </div>
+
+    <p class="text text--body text--muted mb-2">
+      Unico stile approvato per la lista piatti: nessun sfondo, separatore bordeaux 20% 1px.
+    </p>
+    <p class="text text--caption mb-8 font-medium text-accent-orange">
+      ⚠ Non usare card bianche (bg-surface) né bordi arancioni spessi (border-b-2 border-accent-orange).
+    </p>
+
+    <div class="max-w-2xl">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="badge badge--highlight">✓ Approvato</span>
+        <p class="text text--small font-medium">
+          Minimal B2 — <code>border-b border-surface-dark/20</code>
+        </p>
+      </div>
+
+      <div class="flex flex-col">
+
+        <!-- Piatto 1 — con allergene -->
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Phở Bò</h3>
+            <span class="text text--body shrink-0 font-bold text-accent-gold">€ 14,00</span>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--allergen">Contiene glutine</span>
+          </div>
+        </div>
+
+        <!-- Piatto 2 — con prezzo alternativo e badge dietetici -->
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Gỏi Cuốn</h3>
+            <div class="dish-row__price-group">
+              <span class="text text--body font-bold text-accent-gold">€ 8,00</span>
+              <span class="text text--caption text--muted font-medium">2 pz € 14,00</span>
+            </div>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Involtini freschi in carta di riso con gamberi, maiale e erbe.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--highlight">Vegan</span>
+            <span class="badge badge--highlight">No Latticini</span>
+            <span class="badge badge--allergen">Contiene arachidi</span>
+            <span class="badge badge--allergen">Contiene crostacei</span>
+          </div>
+        </div>
+
+        <!-- Piatto 3 — solo prezzo, gluten free -->
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Bún Bò Huế</h3>
+            <span class="text text--body shrink-0 font-bold text-accent-gold">€ 15,00</span>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--highlight">Gluten Free</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===================================================================
+         COMPONENTI DI DOMINIO (simulati con HTML statico)
+    =================================================================== -->
+    <div class="section-divider mt-8">
+      <h2 class="heading heading--2">Componenti di Dominio (Dati Reali)</h2>
+    </div>
+
+    <p class="text text--body text--muted mb-8">
+      Test con dati dummy che simulano la struttura reale di PayloadCMS.
+      Chả Giò (id 3) è marcato esaurito → non viene renderizzato.
+    </p>
+
+    <!-- DishCard — singole -->
+    <h3 class="heading heading--3 mb-4">DishCard — singole</h3>
+
+    <div class="mb-10 flex flex-col">
+
+      <!-- Phở Bò -->
+      <div class="dish-row">
+        <div class="dish-row__header">
+          <h3 class="heading heading--3">Phở Bò</h3>
+          <span class="text text--body shrink-0 font-bold text-accent-gold">€ 14,00</span>
+        </div>
+        <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+          Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie (anice stellato, cannella, cardamomo).
+        </p>
+        <div class="dish-row__badges">
+          <span class="badge badge--allergen">Glutine</span>
+        </div>
+      </div>
+
+      <!-- Gỏi Cuốn -->
+      <div class="dish-row">
+        <div class="dish-row__header">
+          <h3 class="heading heading--3">Gỏi Cuốn</h3>
+          <div class="dish-row__price-group">
+            <span class="text text--body font-bold text-accent-gold">€ 8,00</span>
+            <span class="text text--caption text--muted font-medium">2 pz € 14,00</span>
+          </div>
+        </div>
+        <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+          Involtini freschi in carta di riso con gamberi, maiale, vermicelli e erbe. Serviti con salsa di arachidi.
+        </p>
+        <div class="dish-row__badges">
+          <span class="badge badge--highlight">Vegan</span>
+          <span class="badge badge--highlight">No Uovo</span>
+          <span class="badge badge--highlight">No Latticini</span>
+          <span class="badge badge--allergen">Arachidi</span>
+          <span class="badge badge--allergen">Crostacei</span>
+        </div>
+      </div>
+
+      <!-- Bún Bò Huế -->
+      <div class="dish-row">
+        <div class="dish-row__header">
+          <h3 class="heading heading--3">Bún Bò Huế</h3>
+          <span class="text text--body shrink-0 font-bold text-accent-gold">€ 15,00</span>
+        </div>
+        <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+          Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.
+        </p>
+        <div class="dish-row__badges">
+          <span class="badge badge--highlight">Gluten Free</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- MenuSection — sezione completa -->
+    <h3 class="heading heading--3 mb-4">MenuSection — sezione completa (Chả Giò esaurito → nascosto)</h3>
+
+    <section>
+      <!-- Intestazione categoria -->
+      <div class="mb-6">
+        <h2 class="heading heading--2 heading--bordeaux">Antipasti</h2>
+        <p class="text text--body text--muted mt-2">
+          Piccoli assaggi per iniziare il pasto nel segno della freschezza.
+        </p>
+      </div>
+
+      <!-- Lista piatti (Chả Giò omesso perché esaurito) -->
+      <div class="flex flex-col">
+
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Phở Bò</h3>
+            <span class="text text--body shrink-0 font-bold text-accent-gold">€ 14,00</span>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Zuppa tradizionale di manzo con noodles di riso, erbe aromatiche e spezie (anice stellato, cannella, cardamomo).
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--allergen">Glutine</span>
+          </div>
+        </div>
+
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Gỏi Cuốn</h3>
+            <div class="dish-row__price-group">
+              <span class="text text--body font-bold text-accent-gold">€ 8,00</span>
+              <span class="text text--caption text--muted font-medium">2 pz € 14,00</span>
+            </div>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Involtini freschi in carta di riso con gamberi, maiale, vermicelli e erbe. Serviti con salsa di arachidi.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--highlight">Vegan</span>
+            <span class="badge badge--highlight">No Uovo</span>
+            <span class="badge badge--highlight">No Latticini</span>
+            <span class="badge badge--allergen">Arachidi</span>
+            <span class="badge badge--allergen">Crostacei</span>
+          </div>
+        </div>
+
+        <!-- Chả Giò — esaurito, non renderizzato -->
+        <!-- <div class="dish-row">...</div> -->
+
+        <div class="dish-row">
+          <div class="dish-row__header">
+            <h3 class="heading heading--3">Bún Bò Huế</h3>
+            <span class="text text--body shrink-0 font-bold text-accent-gold">€ 15,00</span>
+          </div>
+          <p class="text text--body text--muted" style="margin-top: 0.375rem;">
+            Zuppa speziata di manzo e maiale con noodles di riso spessi, tipica di Huế.
+          </p>
+          <div class="dish-row__badges">
+            <span class="badge badge--highlight">Gluten Free</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         FOOTER PAGINA
+    =================================================================== -->
+    <div class="page-footer">
+      <p class="text text--caption text--muted">
+        Questa pagina è solo per sviluppo — non inclusa nel bundle di produzione finale.
+      </p>
+    </div>
+
+  </div><!-- /container -->
+</main>
+
+</body>
+</html>
